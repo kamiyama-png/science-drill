@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>理科ドリル：物の溶け方マスター</title>
+    <style>
+        :root {
+            --primary: #2196f3;
+            --secondary: #ffc107;
+            --bg: #e3f2fd;
+        }
+        body {
+            font-family: "Hiragino Sans", "Meiryo", sans-serif;
+            background-color: var(--bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        #game-card {
+            background: white;
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 550px;
+            text-align: center;
+            border: 4px solid var(--primary);
+        }
+        .level-badge {
+            display: inline-block;
+            padding: 5px 20px;
+            border-radius: 20px;
+            background: var(--primary);
+            color: white;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        #question-container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 15px 0;
+            min-height: 140px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            font-weight: bold;
+            line-height: 1.6;
+            border: 2px solid #bbdefb;
+        }
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            width: 100%;
+            margin-top: 15px;
+        }
+        .option-btn {
+            padding: 12px;
+            font-size: 1rem;
+            background: #f1f8ff;
+            border: 2px solid var(--primary);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .option-btn:hover { background: #bbdefb; }
+        #feedback { margin-top: 15px; font-size: 1.3rem; font-weight: bold; height: 35px; }
+        .correct { color: #1976d2; }
+        .wrong { color: #d32f2f; }
+        #clear-screen { display: none; }
+        .progress-dots { margin: 10px 0; font-size: 1.1rem; color: #666; }
+        button.main-btn {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            color: white;
+            background: var(--secondary);
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 5px #ffa000;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-card">
+    <div id="level-label" class="level-badge">レベル1</div>
+    <div id="progress" class="progress-dots"></div>
+    
+    <div id="game-view">
+        <div id="question-container">
+            <div id="question"></div>
+            <div id="options" class="options-grid"></div>
+        </div>
+        <div id="feedback"></div>
+    </div>
+
+    <div id="clear-screen">
+        <h2 id="clear-msg"></h2>
+        <p id="clear-desc"></p>
+        <button class="main-btn" onclick="startNextLevel()" id="next-lvl-btn"></button>
+    </div>
+</div>
+
+<script>
+    let currentLevel = 1;
+    let currentStep = 0;
+    let scoreInLevel = 0;
+    const QUESTIONS_PER_LEVEL = 7;
+
+    const quizData = {
+        1: [ // レベル1: 基本（溶けるようす・重さ）
+            { q: "物が水に溶けて、全体が透明になった液を何という？", a: "水溶液", o: ["水溶液", "にごり水", "混合物", "溶け水"] },
+            { q: "食塩が水に溶けるとき、重さはどうなる？", a: "変わらない", o: ["重くなる", "軽くなる", "変わらない", "なくなる"] },
+            { q: "水に溶けて見えなくなった食塩は、どうなっている？", a: "細かくなって広がっている", o: ["消えてなくなった", "細かくなって広がっている", "水に変化した", "沈んでいる"] },
+            { q: "水溶液のどこを飲んでも同じ味がするのはなぜ？", a: "均一に混ざっているから", o: ["均一に混ざっているから", "下が濃いから", "上が濃いから", "水が甘いから"] },
+            { q: "水50gに食塩5gを溶かすと、全体の重さは何g？", a: "55g", o: ["50g", "55g", "5g", "45g"] },
+            { q: "シュリーレン現象（もやもや）が見えるのはどんなとき？", a: "物が溶けて広がるとき", o: ["完全に溶けたとき", "物が溶けて広がるとき", "凍ったとき", "沸騰したとき"] },
+            { q: "ティーバッグに食塩を入れて吊るすとどうなる？", a: "下に溶け出していく", o: ["上に浮いていく", "下に溶け出していく", "何も起きない", "爆発する"] }
+        ],
+        2: [ // レベル2: 応用（溶ける量と温度）
+            { q: "一定の量の水に溶ける物の量には、限りがある？", a: "限りがある", o: ["限りがある", "限りはない", "物による", "無限に溶ける"] },
+            { q: "水50mLに多く溶けるのはどっち？", a: "食塩", o: ["食塩", "ミョウバン", "どちらも同じ", "砂"] },
+            { q: "水の温度を上げると、溶ける量が大きく増えるのは？", a: "ミョウバン", o: ["食塩", "ミョウバン", "砂", "どちらも増えない"] },
+            { q: "水の温度を上げても、溶ける量がほとんど変わらないのは？", a: "食塩", o: ["食塩", "ミョウバン", "砂", "どちらも激増する"] },
+            { q: "「これ以上溶けない」というまで溶かした液を何という？", a: "飽和水溶液", o: ["飽和水溶液", "満タン液", "限界水溶液", "濃い液"] },
+            { q: "水を増やすと、溶ける物の量はどうなる？", a: "増える", o: ["増える", "減る", "変わらない", "半分になる"] },
+            { q: "食塩とミョウバンの粒の形はどうなっている？", a: "物によって決まっている", o: ["すべて同じ丸形", "物によって決まっている", "決まっていない", "全部トゲトゲ"] }
+        ],
+        3: [ // レベル3: 達人（取り出し方・ろ過）
+            { q: "溶け残った物を取り出すために使う道具は？", a: "ろ紙", o: ["ろ紙", "ちり紙", "新聞紙", "付箋"] },
+            { q: "「ろ過」をするとき、液を注ぐ際に使う棒は？", a: "ガラス棒", o: ["ガラス棒", "わりばし", "鉄の棒", "えんぴつ"] },
+            { q: "「ろ過」で、ビーカーの壁にろうとの先をつける理由は？", a: "液が飛び散らないように", o: ["液が飛び散らないように", "冷やすため", "速く流すため", "液を混ぜるため"] },
+            { q: "ミョウバン水溶液を冷やすと出てくる、粒のようなものを何という？", a: "結晶", o: ["結晶", "化石", "氷", "砂"] },
+            { q: "食塩を水溶液から取り出すのに最も適した方法は？", a: "水を蒸発させる", o: ["冷やす", "水を蒸発させる", "振る", "ろ過する"] },
+            { q: "ろ過した後の液（ろ液）に、溶かした物は残っている？", a: "溶けて残っている", o: ["溶けて残っている", "すべてろ紙に残る", "水だけになる", "消えてなくなる"] },
+            { q: "ミョウバンの結晶を大きく育てるには何が必要？", a: "温度をゆっくり下げる", o: ["温度をゆっくり下げる", "激しく振る", "氷で急に冷やす", "塩を足す"] }
+        ]
+    };
+
+    function loadQuestion() {
+        const levelData = quizData[currentLevel];
+        currentQuestion = levelData[currentStep];
+        document.getElementById('level-label').innerText = `レベル ${currentLevel}：${getLevelName()}`;
+        document.getElementById('progress').innerText = `だい ${currentStep + 1} / ${QUESTIONS_PER_LEVEL} もん`;
+        document.getElementById('question').innerHTML = currentQuestion.q;
+        const optionsEl = document.getElementById('options');
+        optionsEl.innerHTML = '';
+        const shuffled = [...currentQuestion.o].sort(() => Math.random() - 0.5);
+        shuffled.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => checkAnswer(opt);
+            optionsEl.appendChild(btn);
+        });
+        document.getElementById('feedback').innerText = "";
+        document.getElementById('game-view').style.display = "block";
+        document.getElementById('clear-screen').style.display = "none";
+    }
+
+    function getLevelName() {
+        if(currentLevel === 1) return "水溶液のふしぎ";
+        if(currentLevel === 2) return "溶ける量の変化";
+        return "取り出し方の達人";
+    }
+
+    function checkAnswer(selected) {
+        const feedback = document.getElementById('feedback');
+        if (selected === currentQuestion.a) {
+            feedback.innerText = "✨ 正解！ ✨";
+            feedback.className = "correct";
+            scoreInLevel++;
+        } else {
+            feedback.innerText = `おしい！正解は「${currentQuestion.a}」`;
+            feedback.className = "wrong";
+        }
+        document.querySelectorAll('.option-btn').forEach(b => b.onclick = null);
+        setTimeout(() => {
+            currentStep++;
+            if (currentStep < QUESTIONS_PER_LEVEL) loadQuestion();
+            else showLevelResult();
+        }, 1800);
+    }
+
+    function showLevelResult() {
+        document.getElementById('game-view').style.display = "none";
+        document.getElementById('clear-screen').style.display = "block";
+        const msg = document.getElementById('clear-msg');
+        const desc = document.getElementById('clear-desc');
+        const btn = document.getElementById('next-lvl-btn');
+        if (scoreInLevel === QUESTIONS_PER_LEVEL) {
+            msg.innerText = `レベル ${currentLevel} クリア！ 🎊`;
+            desc.innerText = "完璧です！物の溶け方マスターですね！";
+            btn.innerText = currentLevel < 3 ? "次のレベルへ進む" : "最初から挑戦する";
+        } else {
+            msg.innerText = "もう一度！";
+            desc.innerText = `${QUESTIONS_PER_LEVEL}問中 ${scoreInLevel}問正解。全問正解で合格！`;
+            btn.innerText = "このレベルをやり直す";
+        }
+    }
+
+    function startNextLevel() {
+        if (scoreInLevel === QUESTIONS_PER_LEVEL) {
+            if (currentLevel < 3) currentLevel++;
+            else currentLevel = 1;
+        }
+        currentStep = 0; scoreInLevel = 0; loadQuestion();
+    }
+    loadQuestion();
+</script>
+
+</body>
+</html>

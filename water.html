@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>理科ドリル：流れる水の働きマスター</title>
+    <style>
+        :root {
+            --primary: #0288d1;
+            --secondary: #ff5722;
+            --bg: #e1f5fe;
+        }
+        body {
+            font-family: "Hiragino Sans", "Meiryo", sans-serif;
+            background-color: var(--bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        #game-card {
+            background: white;
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 550px;
+            text-align: center;
+            border: 4px solid var(--primary);
+        }
+        .level-badge {
+            display: inline-block;
+            padding: 5px 20px;
+            border-radius: 20px;
+            background: var(--primary);
+            color: white;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        #question-container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 15px 0;
+            min-height: 140px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            font-weight: bold;
+            line-height: 1.6;
+            border: 2px solid #b3e5fc;
+        }
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            width: 100%;
+            margin-top: 15px;
+        }
+        .option-btn {
+            padding: 12px;
+            font-size: 1rem;
+            background: #f0faff;
+            border: 2px solid var(--primary);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .option-btn:hover { background: #b3e5fc; }
+        #feedback { margin-top: 15px; font-size: 1.3rem; font-weight: bold; height: 35px; }
+        .correct { color: #0288d1; }
+        .wrong { color: #d32f2f; }
+        #clear-screen { display: none; }
+        .progress-dots { margin: 10px 0; font-size: 1.1rem; color: #666; }
+        button.main-btn {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            color: white;
+            background: var(--secondary);
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 5px #e64a19;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-card">
+    <div id="level-label" class="level-badge">レベル1</div>
+    <div id="progress" class="progress-dots"></div>
+    
+    <div id="game-view">
+        <div id="question-container">
+            <div id="question"></div>
+            <div id="options" class="options-grid"></div>
+        </div>
+        <div id="feedback"></div>
+    </div>
+
+    <div id="clear-screen">
+        <h2 id="clear-msg"></h2>
+        <p id="clear-desc"></p>
+        <button class="main-btn" onclick="startNextLevel()" id="next-lvl-btn"></button>
+    </div>
+</div>
+
+<script>
+    let currentLevel = 1;
+    let currentStep = 0;
+    let scoreInLevel = 0;
+    const QUESTIONS_PER_LEVEL = 7;
+
+    const quizData = {
+        1: [ // レベル1: 基本（3つのはたらき）
+            { q: "流れる水が、地面をけずるはたらきを何という？", a: "しん食", o: ["しん食", "運ぱん", "たい積", "ろ過"] },
+            { q: "流れる水が、土や石を運ぶはたらきを何という？", a: "運ぱん", o: ["しん食", "運ぱん", "たい積", "蒸発"] },
+            { q: "流れてきた土や石が積もるはたらきを何という？", a: "たい積", o: ["しん食", "運ぱん", "たい積", "結晶"] },
+            { q: "川の外側と内側、けずられやすいのはどっち？", a: "カーブの外側", o: ["カーブの外側", "カーブの内側", "真ん中", "どちらも同じ"] },
+            { q: "川のカーブの内側で、土や石が積もりやすいのはなぜ？", a: "流れがゆるやかだから", o: ["流れがゆるやかだから", "流れが速いから", "水が深いから", "魚がいるから"] },
+            { q: "水の流れる量が増えると、はたらきはどうなる？", a: "大きくなる", o: ["大きくなる", "小さくなる", "変わらない", "なくなる"] },
+            { q: "地面を流れる水は、高いところから低いところへ流れる？", a: "流れる", o: ["流れる", "流れない", "逆流する", "止まる"] }
+        ],
+        2: [ // レベル2: 応用（川の上流・下流の違い）
+            { q: "川の上流にある石の特ちょうは？", a: "大きくて角ばっている", o: ["大きくて角ばっている", "小さくて丸い", "平らで薄い", "砂のように細かい"] },
+            { q: "川の下流にある石の特ちょうは？", a: "小さくて丸みがある", o: ["大きくて角ばっている", "小さくて丸みがある", "巨大な岩ばかり", "トゲトゲしている"] },
+            { q: "石が下流にいくほど丸くなる理由は？", a: "ぶつかり合って角が取れるから", o: ["ぶつかり合って角が取れるから", "水に溶けるから", "誰かが削るから", "魚が食べるから"] },
+            { q: "川幅が広く、流れが一番ゆるやかなのはどこ？", a: "下流", o: ["上流", "中流", "下流", "滝"] },
+            { q: "上流、中流、下流のうち、大きな岩がゴロゴロしているのは？", a: "上流", o: ["上流", "中流", "下流", "どこにもない"] },
+            { q: "川原に細かい砂やどろが多く見られるのはどこ？", a: "下流", o: ["上流", "中流", "下流", "山の中"] },
+            { q: "川の傾き（斜面）が一番急なのはどこ？", a: "上流", o: ["上流", "中流", "下流", "海"] }
+        ],
+        3: [ // レベル3: 達人（実験と災害）
+            { q: "実験で、水の流れを速くするにはどうすればいい？", a: "傾きを急にする", o: ["傾きを急にする", "傾きをゆるくする", "土を固める", "水を止める"] },
+            { q: "雨がたくさん降って川が増水すると、しん食する力はどうなる？", a: "とても大きくなる", o: ["とても大きくなる", "変わらない", "小さくなる", "なくなる"] },
+            { q: "川が曲がっている場所で、土地がけずられやすいのはどっち？", a: "外側", o: ["内側", "外側", "真ん中", "底だけ"] },
+            { q: "大雨のあと、川の水がにごっているのはなぜ？", a: "たくさんの土が運ばれているから", o: ["たくさんの土が運ばれているから", "水が腐ったから", "空が暗いから", "魚が暴れたから"] },
+            { q: "実験で、土が運ばれて積もったところはどこ？", a: "流れがゆるやかになったところ", o: ["流れがゆるやかになったところ", "一番高いところ", "カーブの外側", "スタート地点"] },
+            { q: "川の水を安全に流すために作られている堤防（ていぼう）の役割は？", a: "水があふれるのを防ぐ", o: ["水があふれるのを防ぐ", "石を丸くする", "魚を育てる", "水をきれいにする"] },
+            { q: "流れる水の3つのはたらき、しん食・運ぱん・（　）？", a: "たい積", o: ["たい積", "ろ過", "蒸発", "溶解"] }
+        ]
+    };
+
+    function loadQuestion() {
+        const levelData = quizData[currentLevel];
+        currentQuestion = levelData[currentStep];
+        document.getElementById('level-label').innerText = `レベル ${currentLevel}：${getLevelName()}`;
+        document.getElementById('progress').innerText = `だい ${currentStep + 1} / ${QUESTIONS_PER_LEVEL} もん`;
+        document.getElementById('question').innerHTML = currentQuestion.q;
+        const optionsEl = document.getElementById('options');
+        optionsEl.innerHTML = '';
+        const shuffled = [...currentQuestion.o].sort(() => Math.random() - 0.5);
+        shuffled.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => checkAnswer(opt);
+            optionsEl.appendChild(btn);
+        });
+        document.getElementById('feedback').innerText = "";
+        document.getElementById('game-view').style.display = "block";
+        document.getElementById('clear-screen').style.display = "none";
+    }
+
+    function getLevelName() {
+        if(currentLevel === 1) return "3つのはたらき";
+        if(currentLevel === 2) return "川のようすの変化";
+        return "水の力と実験";
+    }
+
+    function checkAnswer(selected) {
+        const feedback = document.getElementById('feedback');
+        if (selected === currentQuestion.a) {
+            feedback.innerText = "✨ 正解！ ✨";
+            feedback.className = "correct";
+            scoreInLevel++;
+        } else {
+            feedback.innerText = `おしい！正解は「${currentQuestion.a}」`;
+            feedback.className = "wrong";
+        }
+        document.querySelectorAll('.option-btn').forEach(b => b.onclick = null);
+        setTimeout(() => {
+            currentStep++;
+            if (currentStep < QUESTIONS_PER_LEVEL) loadQuestion();
+            else showLevelResult();
+        }, 1800);
+    }
+
+    function showLevelResult() {
+        document.getElementById('game-view').style.display = "none";
+        document.getElementById('clear-screen').style.display = "block";
+        const msg = document.getElementById('clear-msg');
+        const desc = document.getElementById('clear-desc');
+        const btn = document.getElementById('next-lvl-btn');
+        if (scoreInLevel === QUESTIONS_PER_LEVEL) {
+            msg.innerText = `レベル ${currentLevel} クリア！ 🌊`;
+            desc.innerText = "完璧です！川の博士になれそうですね！";
+            btn.innerText = currentLevel < 3 ? "次のレベルへ進む" : "最初から挑戦する";
+        } else {
+            msg.innerText = "もう一度！";
+            desc.innerText = `${QUESTIONS_PER_LEVEL}問中 ${scoreInLevel}問正解。全問正解で合格！`;
+            btn.innerText = "このレベルをやり直す";
+        }
+    }
+
+    function startNextLevel() {
+        if (scoreInLevel === QUESTIONS_PER_LEVEL) {
+            if (currentLevel < 3) currentLevel++;
+            else currentLevel = 1;
+        }
+        currentStep = 0; scoreInLevel = 0; loadQuestion();
+    }
+    loadQuestion();
+</script>
+
+</body>
+</html>

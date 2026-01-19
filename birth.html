@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>5年1組 理科：人のたんじょうマスター</title>
+    <style>
+        :root {
+            --primary: #4caf50;
+            --secondary: #ff9800;
+            --bg: #f1f8e9;
+        }
+        body {
+            font-family: "Hiragino Sans", "Meiryo", sans-serif;
+            background-color: var(--bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        #game-card {
+            background: white;
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 550px;
+            text-align: center;
+            border: 4px solid var(--primary);
+        }
+        .level-badge {
+            display: inline-block;
+            padding: 5px 20px;
+            border-radius: 20px;
+            background: var(--primary);
+            color: white;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        #question-container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 15px 0;
+            min-height: 140px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.15rem;
+            font-weight: bold;
+            line-height: 1.6;
+            border: 2px solid #c8e6c9;
+        }
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            width: 100%;
+            margin-top: 15px;
+        }
+        .option-btn {
+            padding: 12px;
+            font-size: 1rem;
+            background: #e8f5e9;
+            border: 2px solid var(--primary);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .option-btn:hover { background: #c8e6c9; }
+        .option-btn:active { transform: scale(0.95); }
+        
+        #feedback { margin-top: 15px; font-size: 1.3rem; font-weight: bold; height: 35px; }
+        .correct { color: #2e7d32; }
+        .wrong { color: #d32f2f; }
+        
+        #clear-screen { display: none; }
+        .progress-dots { margin: 10px 0; font-size: 1.1rem; color: #666; }
+        button.main-btn {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            color: white;
+            background: var(--secondary);
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 5px #e65100;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-card">
+    <div id="level-label" class="level-badge">レベル1</div>
+    <div id="progress" class="progress-dots"></div>
+    
+    <div id="game-view">
+        <div id="question-container">
+            <div id="question"></div>
+            <div id="options" class="options-grid"></div>
+        </div>
+        <div id="feedback"></div>
+    </div>
+
+    <div id="clear-screen">
+        <h2 id="clear-msg"></h2>
+        <p id="clear-desc"></p>
+        <button class="main-btn" onclick="startNextLevel()" id="next-lvl-btn"></button>
+    </div>
+</div>
+
+<script>
+    let currentLevel = 1;
+    let currentStep = 0;
+    let scoreInLevel = 0;
+    const QUESTIONS_PER_LEVEL = 7;
+
+    const quizData = {
+        1: [ // レベル1: 基本（受精と初期の成長）
+            { q: "卵（卵子）と精子が結びつくことを何という？", a: "受精", o: ["受精", "誕生", "成長", "呼吸"] },
+            { q: "受精した卵が育つ、母親の体内の場所はどこ？", a: "子宮", o: ["子宮", "胃", "心臓", "たいばん"] },
+            { q: "メダカのたまごには養分があるが、人はどこから養分をもらう？", a: "母親の体", o: ["母親の体", "自分のたまご", "空気", "水"] },
+            { q: "受精してから約8週、心臓の動きが始まるころの呼び名は？", a: "胎児", o: ["胎児", "赤ちゃん", "たまご", "幼虫"] },
+            { q: "胎児のまわりにある液体のことを何という？", a: "羊水", o: ["羊水", "海水", "血液", "栄養水"] },
+            { q: "子宮の中で胎児は「羊水」に浮いています。何から守るため？", a: "外からのしげき", o: ["外からのしげき", "寒さ", "まぶしさ", "空腹"] },
+            { q: "受精後、約何週間で赤ちゃんは生まれてくる？", a: "約38週", o: ["約38週", "約10週", "約20週", "約50週"] }
+        ],
+        2: [ // レベル2: 応用（体のつくりと役割）
+            { q: "胎児と母親をつなぎ、養分や酸素を送る組織はどれ？", a: "たいばん", o: ["たいばん", "羊水", "心臓", "子宮の壁"] },
+            { q: "たいばんと胎児をつないでいるくだの名前は？", a: "へそのお", o: ["へそのお", "血管", "筋肉", "せぼね"] },
+            { q: "胎児は「へそのお」を通して何を取り入れている？", a: "酸素と養分", o: ["酸素と養分", "食べ物", "空気", "水"] },
+            { q: "胎児から「へそのお」を通してお母さんへ出すものは？", a: "二酸化炭素や不要な物", o: ["二酸化炭素や不要な物", "酸素", "栄養", "血液"] },
+            { q: "約24週（6ヶ月）ごろ、胎児の体で活発になるのは？", a: "心臓の動き", o: ["心臓の動き", "目の色", "歩く練習", "呼吸"] },
+            { q: "人の一生のうち、一番成長のスピードが速い時期はいつ？", a: "おなかの中にいるとき", o: ["おなかの中にいるとき", "赤ちゃん", "中学生", "大人"] },
+            { q: "生まれたばかりの赤ちゃんの体重はだいたい何g？", a: "約3000g", o: ["約3000g", "約100g", "約1000g", "約10kg"] }
+        ],
+        3: [ // レベル3: 達人（成長のようす）
+            { q: "受精後、約何日で赤ちゃんは生まれる？", a: "約266日", o: ["約266日", "約100日", "約365日", "約500日"] },
+            { q: "約16週ごろ、胎児に現れる変化はどれ？", a: "男女の区別", o: ["男女の区別", "走る力", "言葉", "歯がはえる"] },
+            { q: "約36週ごろ、胎児が子宮の中でできなくなることは？", a: "回転", o: ["回転", "心拍", "栄養吸収", "おしっこ"] },
+            { q: "胎児の成長で、最初の方に形ができるのはどれ？", a: "目や耳", o: ["目や耳", "つめ", "髪の毛", "歯"] },
+            { q: "母親が食事でとった養分は、どこで交換される？", a: "たいばん", o: ["たいばん", "胃", "肺", "へそ"] },
+            { q: "赤ちゃんが生まれるとき、最初に出てくることが多いのは？", a: "頭", o: ["頭", "足", "手", "おしり"] },
+            { q: "メダカの育ちと人の育ちの共通点はどれ？", a: "生命が受け継がれる", o: ["生命が受け継がれる", "水中で育つ", "親がえさを運ぶ", "卵の中で育つ"] }
+        ]
+    };
+
+    function loadQuestion() {
+        const levelData = quizData[currentLevel];
+        currentQuestion = levelData[currentStep];
+        
+        document.getElementById('level-label').innerText = `レベル ${currentLevel}：${getLevelName()}`;
+        document.getElementById('progress').innerText = `だい ${currentStep + 1} / ${QUESTIONS_PER_LEVEL} もん`;
+        document.getElementById('question').innerHTML = currentQuestion.q;
+        
+        const optionsEl = document.getElementById('options');
+        optionsEl.innerHTML = '';
+        
+        // 選択肢をシャッフル
+        const shuffled = [...currentQuestion.o].sort(() => Math.random() - 0.5);
+        
+        shuffled.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => checkAnswer(opt);
+            optionsEl.appendChild(btn);
+        });
+
+        document.getElementById('feedback').innerText = "";
+        document.getElementById('game-view').style.display = "block";
+        document.getElementById('clear-screen').style.display = "none";
+    }
+
+    function getLevelName() {
+        if(currentLevel === 1) return "はじまり（基本）";
+        if(currentLevel === 2) return "つながり（応用）";
+        return "いのち（達人）";
+    }
+
+    function checkAnswer(selected) {
+        const feedback = document.getElementById('feedback');
+        const buttons = document.querySelectorAll('.option-btn');
+        buttons.forEach(b => b.onclick = null); // 連続クリック防止
+
+        if (selected === currentQuestion.a) {
+            feedback.innerText = "✨ 正解！ ✨";
+            feedback.className = "correct";
+            scoreInLevel++;
+        } else {
+            feedback.innerText = `ざんねん！ 正解は「${currentQuestion.a}」`;
+            feedback.className = "wrong";
+        }
+
+        setTimeout(() => {
+            currentStep++;
+            if (currentStep < QUESTIONS_PER_LEVEL) {
+                loadQuestion();
+            } else {
+                showLevelResult();
+            }
+        }, 1800);
+    }
+
+    function showLevelResult() {
+        document.getElementById('game-view').style.display = "none";
+        const clearScreen = document.getElementById('clear-screen');
+        clearScreen.style.display = "block";
+        
+        const msg = document.getElementById('clear-msg');
+        const desc = document.getElementById('clear-desc');
+        const btn = document.getElementById('next-lvl-btn');
+
+        if (scoreInLevel === QUESTIONS_PER_LEVEL) {
+            msg.innerText = `レベル ${currentLevel} クリア！ 🎊`;
+            desc.innerText = "全問正解！生命のひみつに詳しくなったね！";
+            btn.innerText = currentLevel < 3 ? "次のレベルへ進む" : "最初から挑戦する";
+        } else {
+            msg.innerText = "もう一度チャレンジ！";
+            desc.innerText = `${QUESTIONS_PER_LEVEL}問中 ${scoreInLevel}問正解でした。\n全問正解で合格だよ！`;
+            btn.innerText = "このレベルをやり直す";
+        }
+    }
+
+    function startNextLevel() {
+        if (scoreInLevel === QUESTIONS_PER_LEVEL) {
+            if (currentLevel < 3) currentLevel++;
+            else currentLevel = 1;
+        }
+        currentStep = 0;
+        scoreInLevel = 0;
+        loadQuestion();
+    }
+
+    loadQuestion();
+</script>
+
+</body>
+</html>
