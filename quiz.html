@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>人の生命のたんじょう - 完ペキ版クイズ</title>
+    <style>
+        body { font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; background-color: #f7fbff; color: #333; line-height: 1.6; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); border: 2px solid #a5d8ff; }
+        h1 { text-align: center; color: #1971c2; border-bottom: 3px solid #a5d8ff; padding-bottom: 10px; margin-top: 0; }
+        .quiz-info { text-align: right; font-weight: bold; margin-bottom: 15px; color: #495057; }
+        .question-text { font-size: 1.25rem; font-weight: bold; margin-bottom: 20px; padding: 20px; background: #e7f5ff; border-radius: 10px; border-left: 8px solid #339af0; min-height: 60px; display: flex; align-items: center; }
+        
+        /* 2個ずつ並べる設定 */
+        .options { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        
+        button { padding: 20px 15px; font-size: 1.1rem; cursor: pointer; border: 2px solid #339af0; background: #fff; border-radius: 12px; transition: all 0.2s; text-align: center; color: #1971c2; font-weight: bold; display: flex; align-items: center; justify-content: center; }
+        button:hover:not(:disabled) { background: #e7f5ff; transform: translateY(-2px); }
+        button:disabled { cursor: default; }
+        
+        .result-screen { display: none; text-align: center; padding: 20px; }
+        .score-val { font-size: 3rem; font-weight: bold; color: #e03131; margin: 10px 0; }
+        .title-badge { font-size: 1.8rem; font-weight: bold; color: #fff; background: linear-gradient(45deg, #f08c00, #ffec99); padding: 15px 30px; border-radius: 50px; display: inline-block; margin: 20px 0; box-shadow: 0 4px 15px rgba(240,140,0,0.3); text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
+        .feedback { margin: 20px 0; padding: 15px; border-radius: 10px; display: none; font-size: 1.2rem; text-align: center; font-weight: bold; }
+        .correct { background-color: #ebfbee; color: #2b8a3e; border: 1px solid #b2f2bb; }
+        .incorrect { background-color: #fff5f5; color: #c92a2a; border: 1px solid #ffc9c9; }
+        
+        .next-btn { margin-top: 25px; background: #339af0; color: #fff; border: none; width: 100%; text-align: center; padding: 18px; border-radius: 12px; font-size: 1.2rem; cursor: pointer; font-weight: bold; }
+        .next-btn:hover { background: #1c7ed6; }
+        .progress-bar { height: 12px; background: #e9ecef; border-radius: 6px; margin-bottom: 25px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #4dabf7, #339af0); width: 0%; transition: width 0.3s; }
+
+        @media (max-width: 500px) {
+            .options { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>命のつながりマスタークイズ</h1>
+    <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
+    
+    <div id="quiz-container">
+        <div class="quiz-info">Question <span id="current-idx">1</span> / 30</div>
+        <div id="question-area"></div>
+        <div id="feedback-area" class="feedback"></div>
+        <button id="next-button" class="next-btn" style="display:none;" onclick="nextQuestion()">次の問題へ進む ➔</button>
+    </div>
+
+    <div id="result-screen" class="result-screen">
+        <h2 style="color: #495057;">全問終了！あなたの結果は...</h2>
+        <div class="score-val"><span id="final-score">0</span> / 30</div>
+        <p style="font-weight: bold; color: #868e96;">獲得した称号</p>
+        <div id="title-display" class="title-badge">称号名</div>
+        <p id="comment" style="font-size: 1.1rem; margin: 20px 0; color: #495057;"></p>
+        <button onclick="location.reload()" class="next-btn" style="background: #51cf66;">もう一度挑戦する</button>
+    </div>
+</div>
+
+<script>
+const quizData = [
+    { q: "卵（卵子）と精子が結びついて、新しい命が始まることを何といいますか。", a: "受精", opts: ["受精", "誕生", "合体", "成長"] },
+    { q: "受精した直後の、命のもととなるたまごを何と呼びますか。", a: "受精卵", opts: ["赤ちゃん", "受精卵", "胎児", "ひな"] },
+    { q: "人の受精卵は、どのくらいの大きさからはじまりますか。", a: "目に見えないほど小さい", opts: ["ピンポン玉くらい", "目に見えないほど小さい", "お米くらい", "スイカくらい"] },
+    { q: "受精卵が育つ、お母さんの体の中にある特別な場所はどこですか。", a: "子宮（しきゅう）", opts: ["胃", "子宮（しきゅう）", "心臓", "肺"] },
+    { q: "子宮の中で、赤ちゃんを優しく包んでいる液体の名前は何ですか。", a: "羊水（ようすい）", opts: ["血液", "羊水（ようすい）", "お茶", "真水"] },
+    { q: "羊水（ようすい）のとても大切な役割は何ですか。", a: "外からの衝撃から守る", opts: ["外からの衝撃から守る", "泳ぎを練習する", "飲み物になる", "体を洗う"] },
+    { q: "赤ちゃんとお母さんの体をつないでいる管の名前は何ですか。", a: "へそのお", opts: ["血管", "へそのお", "神経", "食道"] },
+    { q: "へそのおがつながっている、お母さんの子宮にある組織は何ですか。", a: "胎盤（たいばん）", opts: ["筋肉", "胎盤（たいばん）", "骨", "肝臓"] },
+    { q: "赤ちゃんは「へそのお」を通してお母さんから何をもらっていますか。", a: "養分や酸素", opts: ["食べ物そのもの", "養分や酸素", "おもちゃ", "お金"] },
+    { q: "赤ちゃんからお母さんへ、へそのおを通して戻されるものは何ですか。", a: "いらなくなった物や二酸化炭素", opts: ["プレゼント", "いらなくなった物や二酸化炭素", "きれいな空気", "手紙"] },
+    { q: "お母さんのおなかの中の温度は、赤ちゃんにとってどうなっていますか。", a: "一定の温かさに保たれている", opts: ["外よりずっと寒い", "一定の温かさに保たれている", "毎日変わる", "氷のように冷たい"] },
+    { q: "受精してから生まれてくるまで、およそ何日くらいかかりますか。", a: "約266日（38週）", opts: ["約100日", "約266日（38週）", "約500日", "約30日"] },
+    { q: "生まれたばかりの赤ちゃんが、最初に飲む栄養たっぷりのものは？", a: "母乳（乳）", opts: ["ジュース", "母乳（乳）", "お粥", "野菜サラダ"] },
+    { q: "おなかの中にいる間、赤ちゃんは鼻で呼吸をしていますか。", a: "胎盤から酸素をもらっているのでしていない", opts: ["している", "胎盤から酸素をもらっているのでしていない", "止めている", "口でしている"] },
+    { q: "お母さんの血液と赤ちゃんの血液は、直接混ざり合っていますか。", a: "胎盤で交換し、直接は混ざっていない", opts: ["直接混ざっている", "胎盤で交換し、直接は混ざっていない", "血液は流れていない", "お父さんの血と混ざる"] },
+    { q: "メダカは「たまご」でうまれますが、人はどうやって生まれますか。", a: "お母さんの体から直接生まれる", opts: ["たまごのまま生まれる", "お母さんの体から直接生まれる", "土から生まれる", "空から降ってくる"] },
+    { q: "命の誕生について、保健室で聞くならどの先生が良いですか。", a: "養護（ようご）の先生", opts: ["事務の先生", "養護（ようご）の先生", "校長先生", "給食の先生"] },
+    { q: "赤ちゃんが育つと、お母さんのおなかはどうなりますか。", a: "大きくふくらむ", opts: ["小さくなる", "大きくふくらむ", "青くなる", "何も変わらない"] },
+    { q: "赤ちゃんがおなかの中で動くことを、何といいますか。", a: "胎動（たいどう）", opts: ["胎動（たいどう）", "ダンス", "振動", "地震"] },
+    { q: "赤ちゃんが生まれることを、お祝いの言葉で何といいますか。", a: "誕生（たんじょう）", opts: ["入学", "誕生（たんじょう）", "卒業", "成功"] },
+    { q: "胎盤がなくなると、赤ちゃんはどうなりますか。", a: "成長できなくなる", opts: ["自分でごはんを食べる", "成長できなくなる", "お父さんの背中で育つ", "鳥になる"] },
+    { q: "赤ちゃんが生まれた瞬間、まず最初にする一生懸命なことは？", a: "産声をあげて呼吸すること", opts: ["走ること", "産声をあげて呼吸すること", "おしゃべり", "拍手"] },
+    { q: "赤ちゃんの身長は、生まれた時だいたいどれくらいですか。", a: "50cmくらい", opts: ["10cm", "50cmくらい", "100cm", "150cm"] },
+    { q: "おへそは、何のあとですか。", a: "へそのおがつながっていたあと", opts: ["怪我のあと", "へそのおがつながっていたあと", "食べ物を入れる場所", "ただの飾り"] },
+    { q: "赤ちゃんを育てるための子宮があるのは誰ですか。", a: "女性", opts: ["男性", "女性", "子ども", "動物以外みんな"] },
+    { q: "人の一生について詳しく調べるのに便利な場所は？", a: "図書館や図鑑", opts: ["図書館や図鑑", "ゲームセンター", "おもちゃ屋さん", "映画館"] },
+    { q: "命が親から子へ、またその子へと続くことを何といいますか。", a: "生命のつながり", opts: ["生命のつながり", "生命の終わり", "生命の停止", "生命の遊び"] },
+    { q: "あなたが今ここにいるのは、誰のおかげといえますか。", a: "命をつないできた多くの先祖", opts: ["自分一人だけの力", "命をつないできた多くの先祖", "魔法使い", "たまたま"] },
+    { q: "お母さんが赤ちゃんを大切に育てている期間を何といいますか。", a: "妊娠（にんしん）期間", opts: ["夏休み", "妊娠（にんしん）期間", "冬眠", "休憩"] },
+    { q: "この学習で一番大切なことは何ですか。", a: "命は尊く、つながっていること", opts: ["命は尊く、つながっていること", "テストで100点をとる技術", "漢字の練習", "計算"] }
+];
+
+let currentIdx = 0;
+let score = 0;
+let autoNextTimer = null;
+
+// 配列をシャッフルする関数
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
+
+function loadQuestion() {
+    clearTimeout(autoNextTimer);
+    const qData = quizData[currentIdx];
+    document.getElementById('current-idx').innerText = currentIdx + 1;
+    document.getElementById('progressFill').style.width = ((currentIdx) / 30 * 100) + "%";
+    
+    // 選択肢をコピーしてシャッフル
+    const shuffledOpts = shuffleArray([...qData.opts]);
+    
+    let html = `<div class="question-text">${qData.q}</div><div class="options">`;
+    shuffledOpts.forEach((opt) => {
+        html += `<button onclick="checkAnswer(this, '${opt}')">${opt}</button>`;
+    });
+    html += `</div>`;
+    
+    document.getElementById('question-area').innerHTML = html;
+    document.getElementById('feedback-area').style.display = 'none';
+    document.getElementById('next-button').style.display = 'none';
+}
+
+function checkAnswer(btn, selectedOpt) {
+    const qData = quizData[currentIdx];
+    const feedback = document.getElementById('feedback-area');
+    const buttons = document.querySelectorAll('.options button');
+    
+    buttons.forEach(b => b.disabled = true);
+    
+    if(selectedOpt === qData.a) {
+        score++;
+        feedback.innerText = "✨ 正解！次もがんばろう！";
+        feedback.className = "feedback correct";
+        btn.style.background = "#d3f9d8";
+        btn.style.borderColor = "#2b8a3e";
+        
+        autoNextTimer = setTimeout(nextQuestion, 2000);
+    } else {
+        feedback.innerText = "しっぱい！正解は「" + qData.a + "」でした。";
+        feedback.className = "feedback incorrect";
+        
+        // 正解のボタンを緑色にする
+        buttons.forEach(b => {
+            if(b.innerText === qData.a) {
+                b.style.background = "#d3f9d8";
+                b.style.borderColor = "#2b8a3e";
+            }
+        });
+        
+        btn.style.background = "#fff5f5";
+        btn.style.borderColor = "#c92a2a";
+        
+        document.getElementById('next-button').style.display = 'block';
+    }
+    
+    feedback.style.display = 'block';
+}
+
+function nextQuestion() {
+    currentIdx++;
+    if(currentIdx < quizData.length) {
+        loadQuestion();
+    } else {
+        showResult();
+    }
+}
+
+function showResult() {
+    document.getElementById('quiz-container').style.display = 'none';
+    document.getElementById('progressFill').style.width = "100%";
+    const screen = document.getElementById('result-screen');
+    screen.style.display = 'block';
+    document.getElementById('final-score').innerText = score;
+    
+    let title = "";
+    let comment = "";
+    let color = "";
+
+    if (score === 30) {
+        title = "👑 命の全知全能・ゴッド";
+        comment = "完璧です！この世の全ての命の仕組みを理解した伝説のマスターです！";
+        color = "linear-gradient(45deg, #f08c00, #ffec99)";
+    } else if (score >= 25) {
+        title = "星5つ！命の賢者";
+        comment = "素晴らしい！命の尊さを心から理解している、まさに「賢者」と呼ぶにふさわしい成績です。";
+        color = "linear-gradient(45deg, #ae3ec9, #e599f7)";
+    } else if (score >= 20) {
+        title = "命の守護者（ガーディアン）";
+        comment = "かなりの実力者です！命のつながりについて、自信を持って周りに教えられるレベルです。";
+        color = "linear-gradient(45deg, #1c7ed6, #74c0fc)";
+    } else if (score >= 15) {
+        title = "命の博士・見習い";
+        comment = "半分以上正解です！これからもっと勉強して、立派な博士を目指しましょう。";
+        color = "linear-gradient(45deg, #087f5b, #63e6be)";
+    } else if (score >= 10) {
+        title = "命の探検家";
+        comment = "命の不思議に気づき始めましたね。教科書をもう一度読むと、もっと発見があるはず！";
+        color = "linear-gradient(45deg, #e67e22, #ffbc44)";
+    } else if (score >= 5) {
+        title = "はじまりの受精卵";
+        comment = "ここから学びが始まります。1つ1つの知識を、受精卵のように大切に育てていきましょう。";
+        color = "linear-gradient(45deg, #868e96, #adb5bd)";
+    } else {
+        title = "命のたまご";
+        comment = "まずは教科書を開くところからスタート！次はもっとたくさんの正解をゲットしよう！";
+        color = "linear-gradient(45deg, #495057, #ced4da)";
+    }
+
+    const titleDisplay = document.getElementById('title-display');
+    titleDisplay.innerText = title;
+    titleDisplay.style.background = color;
+    document.getElementById('comment').innerText = comment;
+}
+
+loadQuestion();
+</script>
+</body>
+</html>
