@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>理科ドリル：物のとけ方完全マスター</title>
+    <style>
+        body { font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; background-color: #eef9f0; color: #333; padding: 20px; }
+        .container { max-width: 700px; margin: 0 auto; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #2a7d50; font-size: 1.8em; margin-bottom: 10px; }
+        .progress { text-align: right; color: #666; font-weight: bold; margin-bottom: 10px; }
+        .quiz-content { min-height: 300px; }
+        .question-text { font-size: 1.2em; font-weight: bold; color: #0056b3; margin-bottom: 20px; line-height: 1.5; }
+        .options { display: flex; flex-direction: column; gap: 10px; }
+        .option-btn { padding: 12px 20px; border: 2px solid #a8d5ba; background: #fff; border-radius: 10px; cursor: pointer; text-align: left; font-size: 1em; transition: 0.2s; }
+        .option-btn:hover { background: #f0fff4; border-color: #2a7d50; }
+        
+        /* フィードバック表示 */
+        #feedback { display: none; margin-top: 20px; padding: 15px; border-radius: 10px; }
+        .correct-box { background-color: #d4edda; border: 2px solid #c3e6cb; color: #155724; }
+        .incorrect-box { background-color: #f8d7da; border: 2px solid #f5c6cb; color: #721c24; }
+        .feedback-title { font-weight: bold; font-size: 1.2em; margin-bottom: 5px; }
+        .next-btn { display: block; width: 100%; padding: 12px; margin-top: 15px; background: #2a7d50; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 1.1em; font-weight: bold; }
+        
+        /* 結果画面 */
+        #result-screen { display: none; text-align: center; }
+        .rank-title { font-size: 2em; font-weight: bold; color: #ff4500; margin: 20px 0; }
+        .summary-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .summary-table th, .summary-table td { border: 1px solid #ddd; padding: 10px; }
+        .summary-table th { background: #2a7d50; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="quiz-screen">
+        <h1>🧪 物のとけ方ドリル 🧪</h1>
+        <div class="progress">第 <span id="current-num">1</span> / 20 問</div>
+        <div class="quiz-content">
+            <div id="question" class="question-text"></div>
+            <div id="options-container" class="options"></div>
+            
+            <div id="feedback">
+                <div id="feedback-content"></div>
+                <button class="next-btn" onclick="nextQuestion()">次の問題へ ▶</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="result-screen">
+        <h1>🎉 全問終了！ 🎉</h1>
+        <div id="final-score" style="font-size: 1.5em; font-weight: bold;"></div>
+        <div id="rank-display" class="rank-title"></div>
+        
+        <h3>📊 きみの正誤リスト 📊</h3>
+        <table class="summary-table">
+            <thead>
+                <tr>
+                    <th>問</th>
+                    <th>判定</th>
+                    <th>正しい答え</th>
+                </tr>
+            </thead>
+            <tbody id="summary-body"></tbody>
+        </table>
+        <button class="next-btn" onclick="location.reload()">もう一度挑戦する</button>
+    </div>
+</div>
+
+<script>
+const quizData = [
+    { q: "食塩を水に浸したときに見える、もやもやした筋のようなものは何？", a: "食塩が水に溶けて広がっていく様子", options: ["食塩が水に溶けて広がっていく様子", "水が腐った様子", "袋が溶けている様子", "空気の泡"], r: "溶けて見えなくなる直前の、物質が水に混ざり合おうとしている状態です。" },
+    { q: "食塩を溶かしきった後の水溶液の様子について正しいのは？", a: "透明で、どこも同じ濃さになっている", options: ["透明で、どこも同じ濃さになっている", "上のほうが濃い", "下のほうが濃い", "真ん中が濃い"], r: "「溶ける」とは、物質が非常に細かくなり、液全体に均一に広がることを指します。" },
+    { q: "水150gに食塩10gを溶かしました。このときの水溶液全体の重さは何g？", a: "160g", options: ["140g", "150g", "155g", "160g"], r: "物は水に溶けても見えなくなるだけで、重さは「水＋溶かした物」の合計になります。" },
+    { q: "電子てんびんを使うとき、最初に行う正しい操作はどれ？", a: "水平な場所に置き、表示を「0」にする", options: ["手で押してみる", "水平な場所に置き、表示を「0」にする", "斜めにして見る", "電源を入れない"], r: "正確にはかるために、まず平らな場所に置いてメモリを0に合わせる必要があります。" },
+    { q: "コーヒーシュガーとかたくり粉、時間が経っても「水溶液」と言えるのは？", a: "コーヒーシュガーを混ぜた液", options: ["コーヒーシュガーを混ぜた液", "かたくり粉を混ぜた液", "両方", "どちらも違う"], r: "水溶液は「透明」で「時間がたっても沈殿しない（下にたまらない）」液体のことです。" },
+    { q: "かたくり粉を混ぜた液が濁って見えるのはなぜ？", a: "粒が大きくて水の中に散らばっているから", options: ["水が汚いから", "粒が大きくて水の中に散らばっているから", "色がついたから", "泡が出たから"], r: "かたくり粉は水に溶けないため、大きな粒が光をさえぎって濁って見えます。" },
+    { q: "物質が水の中に均一に混ざり、透き通った状態になることを何という？", a: "溶解（ようかい）", options: ["分解", "溶解（ようかい）", "合体", "凝固"], r: "理科では、物質が溶けることを「溶解」と言います。" },
+    { q: "実験で、水50mLにミョウバンを「すり切り」で溶かしたとき、何杯溶けた？", a: "約2杯", options: ["1杯も溶けない", "約2杯", "約6杯", "約10杯"], r: "ミョウバンは食塩に比べて、常温の水にはあまり溶けませんでしたね。" },
+    { q: "溶け残りが出た食塩をさらに溶かすには、どうすればいい？", a: "水の量を増やす", options: ["もっと混ぜる", "放置する", "容器を大きくする", "水の量を増やす"], r: "溶ける場所（水）が増えれば、その分もっと多くの物質を溶かすことができます。" },
+    { q: "メスシリンダーで50mLをはかるとき、正しい目の高さは？", a: "液面の最もくぼんだ部分を真横から読む", options: ["真上から見る", "斜めから見る", "液面の最もくぼんだ部分を真横から読む", "端っこの高い所を読む"], r: "液面は端が少し盛り上がるので、中央の平らなくぼんだ所を真横から読みます。" },
+    { q: "同じ50mLの水に溶かしたとき、食塩とミョウバンではどちらが多く溶ける？", a: "食塩", options: ["食塩", "ミョウバン", "どちらも同じ", "日によって違う"], r: "実験では食塩は約6杯、ミョウバンは約2杯溶けました。" },
+    { q: "溶けている食塩水を「ろ紙」でこしたとき、通り抜けた液に食塩は入っている？", a: "含まれている", options: ["含まれている", "含まれていない", "半分だけある", "水に変化した"], r: "溶けている物質は非常に粒が小さいため、ろ紙の目を通ってしまいます。" },
+    { q: "蒸発して残った白い粒が「食塩」だと判断するにはどうすればいい？", a: "形や色を顕微鏡で観察して比べる", options: ["匂いをかぐ", "形や色を顕微鏡で観察して比べる", "手で触る", "音を聞く"], r: "結晶の形は物質によって決まっています。形を見るのが一番の証拠です。" },
+    { q: "実験中に薬品が指についてしまった！どうするのが一番いい？", a: "すぐに大量の水で洗い流す", options: ["タオルで拭く", "乾くまで待つ", "すぐに大量の水で洗い流す", "なめてみる"], r: "実験の薬品には、肌をいためるものもあるので、すぐ水で洗うのが鉄則です。" },
+    { q: "水の量を2倍に増やしたとき、溶けるものの量はどうなる？", a: "約2倍になる", options: ["変わらない", "半分になる", "約2倍になる", "10倍になる"], r: "水の量と溶ける量は比例します。水が2倍なら、溶ける量も約2倍です。" },
+    { q: "放置して水が少し蒸発してしまったとき、水溶液の中では何が起きる？", a: "溶けきれなくなって出てくることがある", options: ["さらに細かくなる", "溶けきれなくなって出てくることがある", "空気中に飛んでいく", "温度が上がる"], r: "水が減ると、溶かしておける限界の量も減るため、溶けていたものが出てきます。" },
+    { q: "ミョウバンが溶け残ったとき、水を追加せずに溶かす別の方法は？", a: "水の温度を上げる", options: ["氷で冷やす", "暗い所に置く", "水の温度を上げる", "息を吹き込む"], r: "多くの物質は、水の温度を上げると溶ける量が増える性質を持っています。" },
+    { q: "食塩水から「水だけ」を気体にして取り出し、また水に戻す方法は？", a: "蒸発した水蒸気を冷やして集める", options: ["ろ紙でこす", "蒸発した水蒸気を冷やして集める", "磁石を使う", "方法はない"], r: "水蒸気には食塩は混ざらないので、冷やして水に戻すと真水になります。" },
+    { q: "水に溶かしたとき、無色ではなく「透明な青色」になる有名な物質は？", a: "硫酸銅", options: ["硫酸銅", "食塩", "ミョウバン", "インク"], r: "資料100ページに載っている青い結晶は「硫酸銅（りゅうさんどう）」です。" },
+    { q: "理科の実験の結果をまとめるとき、一番大切なことは？", a: "正確にはかり、変化をじっくり観察する", options: ["早く終わらせる", "友達のを写す", "正確にはかり、変化をじっくり観察する", "薬品で遊ぶ"], r: "事実を正しくはかり、ありのままを観察することが科学の第一歩です！" }
+];
+
+let currentIdx = 0;
+let score = 0;
+let resultsList = [];
+
+function loadQuestion() {
+    const data = quizData[currentIdx];
+    document.getElementById('current-num').innerText = currentIdx + 1;
+    document.getElementById('question').innerText = data.q;
+    const optionsCont = document.getElementById('options-container');
+    optionsCont.innerHTML = '';
+    document.getElementById('feedback').style.display = 'none';
+    
+    data.options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.innerText = opt;
+        btn.onclick = () => checkAnswer(opt);
+        optionsCont.appendChild(btn);
+    });
+}
+
+function checkAnswer(selected) {
+    const data = quizData[currentIdx];
+    const isCorrect = selected === data.a;
+    const feedbackCont = document.getElementById('feedback');
+    const feedbackInner = document.getElementById('feedback-content');
+    
+    resultsList.push({ qnum: currentIdx + 1, res: isCorrect, correct: data.a });
+
+    if(isCorrect) {
+        score++;
+        feedbackInner.innerHTML = `<div class="feedback-title">⭕ 正解！</div><p>${data.r}</p>`;
+        feedbackCont.className = 'correct-box';
+    } else {
+        feedbackInner.innerHTML = `<div class="feedback-title">❌ おしい！</div><p>正しい答え：<b>${data.a}</b></p><p>${data.r}</p>`;
+        feedbackCont.className = 'incorrect-box';
+    }
+    
+    // 他のボタンを押せなくする
+    const btns = document.querySelectorAll('.option-btn');
+    btns.forEach(b => b.disabled = true);
+    feedbackCont.style.display = 'block';
+}
+
+function nextQuestion() {
+    currentIdx++;
+    if(currentIdx < quizData.length) {
+        loadQuestion();
+    } else {
+        showFinalResult();
+    }
+}
+
+function showFinalResult() {
+    document.getElementById('quiz-screen').style.display = 'none';
+    document.getElementById('result-screen').style.display = 'block';
+    document.getElementById('final-score').innerText = `20問中 ${score}問 正解！`;
+    
+    let rank = "";
+    if (score === 20) rank = "🏆 【伝説】とけ方神（ゴッド） 🏆";
+    else if (score >= 15) rank = "🥇 【超すごい】とけ方博士 🥇";
+    else if (score >= 10) rank = "🥈 【合格】とけ方隊長 🥈";
+    else if (score >= 5) rank = "🥉 【あと少し】とけ方見習い 🥉";
+    else rank = "🌱 【これから】とけ方たまご 🌱";
+    
+    document.getElementById('rank-display').innerText = rank;
+    
+    const summaryBody = document.getElementById('summary-body');
+    resultsList.forEach(item => {
+        const row = `<tr>
+            <td>${item.qnum}</td>
+            <td style="color:${item.res ? 'red' : 'blue'}; font-weight:bold">${item.res ? '○' : '×'}</td>
+            <td>${item.correct}</td>
+        </tr>`;
+        summaryBody.innerHTML += row;
+    });
+}
+
+// 開始
+loadQuestion();
+</script>
+
+</body>
+</html>
