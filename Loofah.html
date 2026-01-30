@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>理科ドリル：花から実へ（ヘチマと受粉）</title>
+    <style>
+        body { font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; background-color: #fff9eb; color: #333; padding: 20px; }
+        .container { max-width: 750px; margin: 0 auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 2px solid #f39c12; }
+        h1 { text-align: center; color: #d35400; border-bottom: 4px solid #f39c12; padding-bottom: 10px; }
+        .status-info { display: flex; justify-content: space-between; font-weight: bold; color: #7f8c8d; margin-bottom: 15px; }
+        .progress-container { background: #f0f0f0; border-radius: 10px; height: 12px; margin-bottom: 25px; }
+        #progress-bar { background: #f39c12; height: 100%; width: 0%; border-radius: 10px; transition: 0.4s; }
+        .q-text { font-size: 1.25em; font-weight: bold; margin-bottom: 20px; color: #a04000; line-height: 1.6; }
+        .options { display: grid; gap: 12px; }
+        .opt-btn { padding: 15px; border: 2px solid #fdebd0; background: #fff; border-radius: 12px; cursor: pointer; font-size: 1.05em; transition: 0.2s; text-align: left; }
+        .opt-btn:hover:not(:disabled) { background: #fef5e7; border-color: #f39c12; }
+        #feedback { display: none; margin-top: 25px; padding: 20px; border-radius: 15px; border-left: 8px solid; }
+        .correct-style { background: #e8f5e9; border-color: #4caf50; color: #1b5e20; }
+        .incorrect-style { background: #ffebee; border-color: #f44336; color: #b71c1c; }
+        .next-btn { display: block; width: 100%; padding: 15px; margin-top: 20px; background: #f39c12; color: white; border: none; border-radius: 10px; font-size: 1.1em; font-weight: bold; cursor: pointer; }
+
+        #result-screen { display: none; text-align: center; }
+        .rank-banner { font-size: 2.2em; font-weight: bold; margin: 30px 0; color: #d35400; }
+        .summary-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9em; }
+        .summary-table th, .summary-table td { border: 1px solid #ddd; padding: 10px; }
+        .summary-table th { background: #f39c12; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="quiz-screen">
+        <h1>🌼 花から実へ・完全攻略 🌼</h1>
+        <div class="status-info">
+            <span>問題 <span id="q-num">1</span> / 20</span>
+            <span id="rank-badge">称号：受粉のお手伝い</span>
+        </div>
+        <div class="progress-container"><div id="progress-bar"></div></div>
+        
+        <div id="question" class="q-text"></div>
+        <div id="options" class="options"></div>
+
+        <div id="feedback">
+            <div id="feedback-title" style="font-size: 1.3em; font-weight: bold; margin-bottom: 10px;"></div>
+            <div id="feedback-desc"></div>
+            <button class="next-btn" onclick="goNext()">次の問題へ ▶</button>
+        </div>
+    </div>
+
+    <div id="result-screen">
+        <h1>🎊 全問終了！ 🎊</h1>
+        <div id="final-score" style="font-size: 1.4em;"></div>
+        <div id="rank-display" class="rank-banner"></div>
+        <h3>📊 観察ノートまとめ</h3>
+        <table class="summary-table">
+            <thead>
+                <tr><th>問</th><th>判定</th><th>正しい答え</th></tr>
+            </thead>
+            <tbody id="summary-body"></tbody>
+        </table>
+        <button class="next-btn" onclick="location.reload()">もう一度観察する</button>
+    </div>
+</div>
+
+<script>
+const quizData = [
+    { q: "ヘチマの花で、花のもとの部分がふくらんでいるのはどっち？", a: "め花", r: "53ページにあります。め花には、花の根元に小さな実のようなふくらみがあります。", options: ["お花", "め花", "どちらもふくらんでいる", "どちらもふくらんでいない"] },
+    { q: "ヘチマのお花にある、黄色い粉を出す部分を何といいますか？", a: "おしべ", r: "お花には「おしべ」があり、その先（やく）から花粉が出ます（54P）。", options: ["おしべ", "めしべ", "花びら", "がく"] },
+    { q: "ヘチマのめ花にある、花粉がつく部分を何といいますか？", a: "めしべ", r: "め花には「めしべ」があり、そのもとの部分が実になります（54P）。", options: ["おしべ", "めしべ", "花びら", "がく"] },
+    { q: "アサガオの花のように、1つの花におしべとめしべが両方ある花は何といいますか？", a: "1つの花でおしべとめしべが揃っている花", r: "アサガオはヘチマと違い、1つの花に両方のつくりがあります（54P）。", options: ["1つの花でおしべとめしべが揃っている花", "お花とめ花が分かれている花", "花粉がない花", "実がならない花"] },
+    { q: "めしべの先に花粉がつくことを何といいますか？", a: "受粉（じゅふん）", r: "56ページにあります。花粉がめしべの先につくことが実になるための第一歩です。", options: ["発芽", "受粉（じゅふん）", "開花", "変身"] },
+    
+    { q: "顕微鏡（けんびきょう）で花粉を観察するとき、はっきり見るために使うのは？", a: "反射鏡（はんしゃきょう）やしぼり", r: "光を調節して、見やすくする必要があります（55P関連）。", options: ["反射鏡（はんしゃきょう）やしぼり", "定規", "ピンセット", "色鉛筆"] },
+    { q: "ヘチマの実は、花のどの部分が成長してできますか？", a: "めしべのもとのふくらんだ部分", r: "59ページのまとめにある通り、受粉するとめしべのもとが実になります。", options: ["おしべの先", "花びら全体", "めしべのもとのふくらんだ部分", "がくの部分"] },
+    { q: "受粉（じゅふん）が行われないと、めしべのもとの部分は通常どうなりますか？", a: "大きくならずに落ちてしまう", r: "59ページの結果より、受粉しないと実は成長せずに地面に落ちてしまいます。", options: ["勝手に実になる", "大きくならずに落ちてしまう", "お花に変わる", "枯れずにずっと残る"] },
+    { q: "アサガオのつぼみでおしべを全部取り除き、袋をかぶせて「受粉させない」実験をするとどうなる？", a: "実はできない", r: "58ページの実演にある通り、受粉をさまたげると実はできません。", options: ["実はできない", "大きな実ができる", "おしべが再生する", "花が2つさく"] },
+    { q: "虫が花のまわりを飛んでいるのは、植物にとってどのような助けになっていますか？", a: "花粉を運んで受粉を助けている", r: "虫が蜜を吸いに来たときに花粉が体に付き、めしべに運ばれます（56P）。", options: ["花びらを食べている", "花をきれいにしている", "花粉を運んで受粉を助けている", "花を冷やしている"] },
+
+    { q: "ヘチマのお花とめ花を見分ける最も簡単なポイントは？", a: "花のもとにふくらみがあるかないか", r: "53ページの写真の通り、もとの形を見ればすぐに見分けられます。", options: ["花びらの色", "花がさく時間", "花のもとにふくらみがあるかないか", "茎の太さ"] },
+    { q: "アサガオの実の中にできているものは何ですか？", a: "種子（しゅし）", r: "実が熟すと、その中に次の命である「種子」ができます（52P）。", options: ["花びら", "種子（しゅし）", "おしべ", "空気"] },
+    { q: "おしべの先にある、花粉が入っている袋のような部分を何といいますか？", a: "やく", r: "「やく」の中で花粉が作られ、熟すと外に出てきます（54P）。", options: ["やく", "つぼみ", "柱頭（ちゅうとう）", "子房（しぼう）"] },
+    { q: "めしべの先の、花粉がつきやすくなっている部分を何といいますか？", a: "柱頭（ちゅうとう）", r: "めしべの先端は「柱頭」と呼ばれ、受粉しやすい形や性質をしています（54P）。", options: ["柱頭（ちゅうとう）", "花糸（かし）", "花びら", "根"] },
+    { q: "ヘチマのように「お花」と「め花」がある植物は、他にどれですか？（PDFヒントより）", a: "カボチャやキュウリ", r: "ウリ科の植物は、お花とめ花が別々にさくものが多いです（53P関連）。", options: ["カボチャやキュウリ", "サクラ", "チューリップ", "ヒマワリ"] },
+
+    { q: "58ページの実験で、なぜ花に「袋（ふくろ）」をかぶせるのですか？", a: "他の花粉が勝手につかないようにするため", r: "受粉の影響を正しく調べるため、風や虫で花粉が運ばれるのを防ぎます。", options: ["花を温めるため", "他の花粉が勝手につかないようにするため", "虫に食べられないようにするため", "色を隠すため"] },
+    { q: "アサガオの実をたてにわると、中には何室（へや）ありますか？", a: "3つに分かれていることが多い", r: "59ページのアサガオの実の断面図を見ると、部屋が分かれているのがわかります。", options: ["1つだけ", "3つに分かれていることが多い", "100個くらいある", "空洞で何もない"] },
+    { q: "顕微鏡で花粉を観察するとき、最初にするべきことは？", a: "いちばん倍率の低いレンズで合わせる", r: "まずは全体が見えやすい低い倍率から探し始めるのが基本です（55P）。", options: ["いきなり最高倍率にする", "いちばん倍率の低いレンズで合わせる", "レンズを直接指でさわる", "水の中に沈める"] },
+    { q: "ヘチマの花粉の形は、顕微鏡で見るとどんな形をしていますか？", a: "ラグビーボールのような形", r: "55ページの写真にある通り、少し細長い形をしています（植物によって形は違います）。", options: ["ラグビーボールのような形", "完全な星形", "四角い形", "ドーナツ型"] },
+    { q: "植物が実をつくり、種子を残すのは何のためですか？", a: "命をつないで仲間を増やすため", r: "52ページにあるように、生命のつながりのために花は実になります。", options: ["人間に食べてもらうため", "命をつないで仲間を増やすため", "冬を越すため", "きれいにするため"] }
+];
+
+let cur = 0, score = 0, results = [];
+
+function loadQ() {
+    const d = quizData[cur];
+    document.getElementById('q-num').innerText = cur + 1;
+    document.getElementById('progress-bar').style.width = ((cur+1)/20*100) + '%';
+    document.getElementById('question').innerText = d.q;
+    const optDiv = document.getElementById('options');
+    optDiv.innerHTML = '';
+    document.getElementById('feedback').style.display = 'none';
+    
+    let rank = "受粉のお手伝い";
+    if(cur >= 5) rank = "ヘチマ見守り隊";
+    if(cur >= 10) rank = "顕微鏡マスター";
+    if(cur >= 15) rank = "生命のつながり伝道師";
+    document.getElementById('rank-badge').innerText = "称号：" + rank;
+
+    d.options.sort(()=>Math.random()-0.5).forEach(o => {
+        const b = document.createElement('button');
+        b.className = 'opt-btn';
+        b.innerText = o;
+        b.onclick = () => check(o);
+        optDiv.appendChild(b);
+    });
+}
+
+function check(sel) {
+    const d = quizData[cur];
+    const isC = sel === d.a;
+    const f = document.getElementById('feedback');
+    results.push({res: isC, a: d.a});
+    if(isC) {
+        score++;
+        document.getElementById('feedback-title').innerText = "⭕ 正解！";
+        f.className = 'correct-style';
+    } else {
+        document.getElementById('feedback-title').innerText = "❌ おしい！";
+        f.className = 'incorrect-style';
+    }
+    document.getElementById('feedback-desc').innerHTML = `<p>答え：<b>${d.a}</b></p><p>${d.r}</p>`;
+    document.querySelectorAll('.opt-btn').forEach(b => b.disabled = true);
+    f.style.display = 'block';
+}
+
+function goNext() {
+    cur++;
+    if(cur < 20) loadQ();
+    else showRes();
+}
+
+function showRes() {
+    document.getElementById('quiz-screen').style.display = 'none';
+    document.getElementById('result-screen').style.display = 'block';
+    document.getElementById('final-score').innerText = `20問中 ${score}問 正解！`;
+    let rank = (score === 20) ? "👑 【伝説】ヘチマ・ゴッド" : (score >= 15) ? "🥇 植物博士" : "🌱 観察中";
+    document.getElementById('rank-display').innerText = rank;
+    const sB = document.getElementById('summary-body');
+    results.forEach((r, i) => {
+        sB.innerHTML += `<tr><td>${i+1}</td><td>${r.res?'○':'×'}</td><td>${r.a}</td></tr>`;
+    });
+}
+
+loadQ();
+</script>
+</body>
+</html>
