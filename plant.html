@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>理科ドリル：植物の発芽と成長</title>
+    <style>
+        body { font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; background-color: #f7fff7; color: #333; padding: 20px; }
+        .container { max-width: 750px; margin: 0 auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 2px solid #2ecc71; }
+        h1 { text-align: center; color: #27ae60; border-bottom: 4px solid #2ecc71; padding-bottom: 10px; }
+        .status-info { display: flex; justify-content: space-between; font-weight: bold; color: #7f8c8d; margin-bottom: 15px; }
+        .progress-container { background: #f0f0f0; border-radius: 10px; height: 12px; margin-bottom: 25px; }
+        #progress-bar { background: #2ecc71; height: 100%; width: 0%; border-radius: 10px; transition: 0.4s; }
+        .q-text { font-size: 1.25em; font-weight: bold; margin-bottom: 20px; color: #1e8449; line-height: 1.6; }
+        .options { display: grid; gap: 12px; }
+        .opt-btn { padding: 15px; border: 2px solid #d4efdf; background: #fff; border-radius: 12px; cursor: pointer; font-size: 1.05em; transition: 0.2s; text-align: left; }
+        .opt-btn:hover:not(:disabled) { background: #e9f7ef; border-color: #2ecc71; }
+        #feedback { display: none; margin-top: 25px; padding: 20px; border-radius: 15px; border-left: 8px solid; }
+        .correct-style { background: #e8f5e9; border-color: #4caf50; color: #1b5e20; }
+        .incorrect-style { background: #ffebee; border-color: #f44336; color: #b71c1c; }
+        .next-btn { display: block; width: 100%; padding: 15px; margin-top: 20px; background: #2ecc71; color: white; border: none; border-radius: 10px; font-size: 1.1em; font-weight: bold; cursor: pointer; }
+
+        #result-screen { display: none; text-align: center; }
+        .rank-banner { font-size: 2.2em; font-weight: bold; margin: 30px 0; color: #1e8449; }
+        .summary-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9em; }
+        .summary-table th, .summary-table td { border: 1px solid #ddd; padding: 10px; }
+        .summary-table th { background: #2ecc71; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="quiz-screen">
+        <h1>🌱 植物の発芽・完全マスター 🌱</h1>
+        <div class="status-info">
+            <span>問題 <span id="q-num">1</span> / 20</span>
+            <span id="rank-badge">称号：種まき見習い</span>
+        </div>
+        <div class="progress-container"><div id="progress-bar"></div></div>
+        
+        <div id="question" class="q-text"></div>
+        <div id="options" class="options"></div>
+
+        <div id="feedback">
+            <div id="feedback-title" style="font-size: 1.3em; font-weight: bold; margin-bottom: 10px;"></div>
+            <div id="feedback-desc"></div>
+            <button class="next-btn" onclick="goNext()">次の問題へ ▶</button>
+        </div>
+    </div>
+
+    <div id="result-screen">
+        <h1>🎊 全問終了！ 🎊</h1>
+        <div id="final-score" style="font-size: 1.4em;"></div>
+        <div id="rank-display" class="rank-banner"></div>
+        <h3>📊 成長の記録</h3>
+        <table class="summary-table">
+            <thead>
+                <tr><th>問</th><th>判定</th><th>正しい答え</th></tr>
+            </thead>
+            <tbody id="summary-body"></tbody>
+        </table>
+        <button class="next-btn" onclick="location.reload()">もう一度まく</button>
+    </div>
+</div>
+
+<script>
+const quizData = [
+    { q: "種子が芽を出すことを何といいますか？", a: "発芽（はつが）", r: "植物が育ち始める第一歩、種子から芽が出ることを「発芽」といいます（20P）。", options: ["発芽（はつが）", "成長", "開花", "変身"] },
+    { q: "インゲンマメの種子で、発芽したあとに最初に開く部分は？", a: "子葉（しよう）", r: "教科書28ページにあるように、種子の大部分を占める厚い部分を「子葉」といいます。", options: ["子葉（しよう）", "本葉", "花びら", "トゲ"] },
+    { q: "発芽の条件を調べる実験で、水があるものとないものを比べたとき、芽が出たのはどっち？", a: "水がある方", r: "教科書22ページの実験結果から、発芽には「水」が必要であることがわかります。", options: ["水がある方", "水がない方", "どちらも出た", "どちらも出なかった"] },
+    { q: "種子を「水に沈めたまま」にしておくと、芽が出にくいのはなぜ？", a: "空気が足りなくなるから", r: "植物が発芽するには、水だけでなく「空気」も必要です。水に沈むと空気が届きません（23P）。", options: ["水が多すぎて腐るから", "空気が足りなくなるから", "光が当たらないから", "温度が下がるから"] },
+    { q: "冷蔵庫の中に置いた種子がなかなか発芽しないのは、何の条件が足りないから？", a: "適当な温度", r: "発芽には、その植物に合った「適当な温度」が必要です。寒すぎると発芽しません（25P）。", options: ["水", "空気", "適当な温度", "日光"] },
+    
+    { q: "発芽する前のインゲンマメの種子を割ると、中には何がある？", a: "葉やくきや根になる部分と子葉", r: "28ページにある通り、種子の中には将来の植物の姿が小さく準備されています。", options: ["葉やくきや根になる部分と子葉", "水だけが入っている", "砂がつまっている", "何もない空洞"] },
+    { q: "種子にデンプンが含まれているか調べるために使う薬品は何？", a: "ヨウ素液", r: "29ページの実験で使います。デンプンがあると、青むらさき色に変わる液体です。", options: ["ベネジクト液", "ヨウ素液", "アルコール", "食塩水"] },
+    { q: "発芽する前の種子にヨウ素液をつけると、何色に変わりますか？", a: "青むらさき色", r: "種子には栄養（デンプン）が蓄えられているため、ヨウ素液で青むらさき色に変わります（29P）。", options: ["赤色", "青むらさき色", "黄色", "変化しない"] },
+    { q: "発芽してしばらくたった後の「子葉」はどうなりますか？", a: "しぼんで小さくなる", r: "28ページの写真にある通り、栄養が使われた後の子葉はしわしわにしぼんでいきます。", options: ["もっと大きく太る", "しぼんで小さくなる", "赤く色づく", "根っこに変わる"] },
+    { q: "発芽した後の子葉にヨウ素液をつけても、あまり色が変わらないのはなぜ？", a: "中の養分（デンプン）が使われたから", r: "種子に蓄えられていたデンプンは、発芽するためのエネルギーとして使われてしまったからです（29P）。", options: ["水にぬれたから", "太陽にあたったから", "中の養分（デンプン）が使われたから", "古くなったから"] },
+
+    { q: "植物が大きく成長するために、発芽の条件以外に「新たに必要」なものは？", a: "日光と肥料", r: "34ページからの実験で、成長には日光や土の栄養（肥料）が大切であることがわかります。", options: ["日光と肥料", "暗い場所", "大量の氷", "冷たい風"] },
+    { q: "日光が当たらない場所で育ったインゲンマメは、どうなりますか？", a: "ひょろひょろと細く、色がうすくなる", r: "日光が足りないと、健康に育つことができず、弱々しい姿になってしまいます（34P）。", options: ["ガッシリ太く育つ", "ひょろひょろと細く、色がうすくなる", "真っ赤な葉っぱになる", "全く変わらない"] },
+    { q: "肥料（土の栄養）をあたえた植物とあたえない植物、どちらが大きく育つ？", a: "肥料をあたえた方", r: "肥料は植物の成長を助ける大切な栄養分です（36P）。", options: ["肥料をあたえた方", "肥料をあたえない方", "どちらも同じ", "肥料をあげると枯れる"] },
+    { q: "ヨウ素液で調べた「養分」の正体は何ですか？", a: "デンプン", r: "種子に蓄えられている主な栄養分はデンプンです（29P）。", options: ["砂糖", "デンプン", "油", "タンパク質"] },
+    { q: "種子が発芽するために「必要ない」ものはどれですか？", a: "日光", r: "発芽には「水・空気・温度」が必要ですが、ほとんどの種子は日光がなくても発芽します（27P）。", options: ["水", "空気", "適当な温度", "日光"] },
+
+    { q: "実験で条件を変えるとき、調べたい条件以外のことはどうしなければいけませんか？", a: "すべて同じにする", r: "22ページにあるように、条件を一つだけ変えて他を揃えるのが、正しい実験のやり方です。", options: ["バラバラにする", "すべて同じにする", "何も気にしなくてよい", "反対にする"] },
+    { q: "インゲンマメを暗い箱の中で育てると、葉の色はどうなりますか？", a: "黄色っぽくなる", r: "日光に当たらないと、葉の緑色がうまく作れず、黄色っぽい色になります（35P）。", options: ["濃い緑色になる", "黄色っぽくなる", "青色になる", "紫色になる"] },
+    { q: "種子が芽を出すために使われる栄養は、どこに蓄えられていますか？", a: "子葉（しよう）", r: "インゲンマメの場合、ふっくらした子葉の中に発芽に必要なデンプンが詰まっています（28P）。", options: ["根", "子葉（しよう）", "さや", "種子の皮"] },
+    { q: "植物が成長するとき、デンプン以外の養分も土から吸収しますか？", a: "はい、肥料などの養分を吸収する", r: "根から水と一緒に、成長を助ける肥料分などを取り込みます（36P）。", options: ["はい、肥料などの養分を吸収する", "いいえ、水しか吸わない", "いいえ、空気しか吸わない", "日光を吸う"] },
+    { q: "発芽の3つの条件をすべて答えてください。", a: "水、空気、適当な温度", r: "「水・空気・温度」が揃ったとき、種子は生命の活動を始めます（27P）。", options: ["水、肥料、日光", "水、土、空気", "水、空気、適当な温度", "温度、日光、土"] }
+];
+
+let cur = 0, score = 0, results = [];
+
+function loadQ() {
+    const data = quizData[cur];
+    document.getElementById('q-num').innerText = cur + 1;
+    document.getElementById('progress-bar').style.width = ((cur+1)/20*100) + '%';
+    document.getElementById('question').innerText = data.q;
+    const optDiv = document.getElementById('options');
+    optDiv.innerHTML = '';
+    document.getElementById('feedback').style.display = 'none';
+    
+    let rank = "種まき見習い";
+    if(cur >= 5) rank = "水やり担当";
+    if(cur >= 10) rank = "発芽リーダー";
+    if(cur >= 15) rank = "マメ博士";
+    document.getElementById('rank-badge').innerText = "称号：" + rank;
+
+    data.options.sort(()=>Math.random()-0.5).forEach(o => {
+        const b = document.createElement('button');
+        b.className = 'opt-btn';
+        b.innerText = o;
+        b.onclick = () => check(o);
+        optDiv.appendChild(b);
+    });
+}
+
+function check(sel) {
+    const d = quizData[cur];
+    const isC = sel === d.a;
+    const f = document.getElementById('feedback');
+    results.push({res: isC, a: d.a});
+
+    if(isC) {
+        score++;
+        document.getElementById('feedback-title').innerText = "⭕ 正解です！";
+        f.className = 'correct-style';
+    } else {
+        document.getElementById('feedback-title').innerText = "❌ おしい！";
+        f.className = 'incorrect-style';
+    }
+    document.getElementById('feedback-desc').innerHTML = `<p>答え：<b>${d.a}</b></p><p>${d.r}</p>`;
+    document.querySelectorAll('.opt-btn').forEach(b => b.disabled = true);
+    f.style.display = 'block';
+}
+
+function goNext() {
+    cur++;
+    if(cur < 20) loadQ();
+    else showRes();
+}
+
+function showRes() {
+    document.getElementById('quiz-screen').style.display = 'none';
+    document.getElementById('result-screen').style.display = 'block';
+    document.getElementById('final-score').innerText = `20問中 ${score}問 正解しました！`;
+    
+    let rank = "";
+    if(score === 20) rank = "👑 【伝説】植物を育てる神 👑";
+    else if(score >= 15) rank = "🥇 【超すごい】グリーン・マスター 🥇";
+    else if(score >= 10) rank = "🥈 【合格】植物博士 🥈";
+    else if(score >= 5) rank = "🥉 【あと一歩】マメのお世話係 🥉";
+    else rank = "🌱 【修行中】インゲンのたまご 🌱";
+    
+    document.getElementById('rank-display').innerText = rank;
+    const sB = document.getElementById('summary-body');
+    results.forEach((r, i) => {
+        sB.innerHTML += `<tr><td>${i+1}</td><td>${r.res?'○':'×'}</td><td>${r.a}</td></tr>`;
+    });
+}
+
+loadQ();
+</script>
+</body>
+</html>
