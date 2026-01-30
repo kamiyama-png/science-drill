@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>理科ドリル：台風の動きと天気</title>
+    <style>
+        body { font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; background-color: #f0f8ff; color: #333; padding: 20px; }
+        .container { max-width: 750px; margin: 0 auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #1e88e5; border-bottom: 4px solid #1e88e5; padding-bottom: 10px; }
+        .status-info { display: flex; justify-content: space-between; font-weight: bold; color: #555; margin-bottom: 15px; }
+        .progress-container { background: #e0e0e0; border-radius: 10px; height: 12px; margin-bottom: 25px; }
+        #progress-bar { background: #1e88e5; height: 100%; width: 0%; border-radius: 10px; transition: 0.4s; }
+        .q-text { font-size: 1.25em; font-weight: bold; margin-bottom: 20px; color: #0d47a1; line-height: 1.6; }
+        .options { display: grid; gap: 12px; }
+        .opt-btn { padding: 15px; border: 2px solid #bbdefb; background: #fff; border-radius: 12px; cursor: pointer; font-size: 1.05em; transition: 0.2s; text-align: left; }
+        .opt-btn:hover:not(:disabled) { background: #e3f2fd; border-color: #1e88e5; }
+        #feedback { display: none; margin-top: 25px; padding: 20px; border-radius: 15px; border-left: 8px solid; }
+        .correct-style { background: #e8f5e9; border-color: #4caf50; color: #1b5e20; }
+        .incorrect-style { background: #ffebee; border-color: #f44336; color: #b71c1c; }
+        .next-btn { display: block; width: 100%; padding: 15px; margin-top: 20px; background: #1e88e5; color: white; border: none; border-radius: 10px; font-size: 1.1em; font-weight: bold; cursor: pointer; }
+
+        #result-screen { display: none; text-align: center; }
+        .rank-banner { font-size: 2.2em; font-weight: bold; margin: 30px 0; color: #ef6c00; }
+        .summary-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9em; }
+        .summary-table th, .summary-table td { border: 1px solid #ddd; padding: 10px; }
+        .summary-table th { background: #1e88e5; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="quiz-screen">
+        <h1>🌪️ 台風の動き・完全攻略 🌪️</h1>
+        <div class="status-info">
+            <span>問題 <span id="q-num">1</span> / 20</span>
+            <span id="rank-badge">称号：お天気たまご</span>
+        </div>
+        <div class="progress-container"><div id="progress-bar"></div></div>
+        
+        <div id="question" class="q-text"></div>
+        <div id="options" class="options"></div>
+
+        <div id="feedback">
+            <div id="feedback-title" style="font-size: 1.3em; font-weight: bold; margin-bottom: 10px;"></div>
+            <div id="feedback-desc"></div>
+            <button class="next-btn" onclick="goNext()">次の問題へ ▶</button>
+        </div>
+    </div>
+
+    <div id="result-screen">
+        <h1>🎊 全問終了 🎊</h1>
+        <div id="final-score" style="font-size: 1.4em;"></div>
+        <div id="rank-display" class="rank-banner"></div>
+        <h3>📊 きみの正誤レポート</h3>
+        <table class="summary-table">
+            <thead>
+                <tr><th>問</th><th>判定</th><th>正しい答え</th></tr>
+            </thead>
+            <tbody id="summary-body"></tbody>
+        </table>
+        <button class="next-btn" onclick="location.reload()">もう一度挑戦する</button>
+    </div>
+</div>
+
+<script>
+const quizData = [
+    // レベル1: 基本（PDF 64-65ページより）
+    { q: "宇宙から見た台風の雲は、どのような様子をしていますか？", a: "巨大なうずまきのような形", r: "教科書64ページの衛星写真にある通り、台風は大きなうずまき状の雲のまとまりです。", options: ["巨大なうずまきのような形", "バラバラの小さな雲", "細長い線の形", "四角い形"] },
+    { q: "台風はふつう、日本のどちらの方角から近づいてきますか？", a: "南の方", r: "64ページに「日本の南の方に、台風があるね」とある通り、南の海上で発生して北へ動きます。", options: ["北の方", "東の方", "西の方", "南の方"] },
+    { q: "台風が近づいてくると、天気や風はどう変わりますか？", a: "強い雨が降り、激しい風が吹く", r: "台風は強い風を伴った厚い雲を連れてくるため、雨と風が両方強まります（64P）。", options: ["晴れて風が止まる", "強い雨が降り、激しい風が吹く", "雪が降り始める", "変化しない"] },
+    { q: "台風の雲と、春のころの雲の共通点は何ですか？", a: "どちらも時間とともに動いていく", r: "65ページの話し合いの例にある通り、どちらも場所を変えて移動していく点は共通しています。", options: ["どちらも同じスピード", "どちらも動かない", "どちらも時間とともに動いていく", "どちらも西から東へしか動かない"] },
+    { q: "台風の中心付近にある、雲が少なくて風が弱い場所を何といいますか？", a: "台風の目", r: "台風のうずの中心には「目」と呼ばれる、雲が切れて風が穏やかな場所があります。", options: ["台風の鼻", "台風の目", "台風の口", "台風の耳"] },
+    
+    // レベル2: 台風の進路と変化（PDF 65ページより）
+    { q: "台風が日本付近で「北東」に進路を変えるとき、影響している強い風を何という？", a: "偏西風（へんせいふう）", r: "日本の上空を吹く西風（偏西風）に乗ると、台風は北東へスピードを上げて進みます（65P）。", options: ["貿易風", "季節風", "偏西風（へんせいふう）", "そよ風"] },
+    { q: "台風の進路予想図で、中心が入ると予想される範囲を示す白い円の名前は？", a: "予報円", r: "65ページの進路図にある白い円が予報円です。先に行くほど予想が難しいため円が大きくなります。", options: ["安全円", "予報円", "台風サークル", "雨エリア"] },
+    { q: "台風が通り過ぎた後、天気が急に回復して晴れることを何といいますか？", a: "台風一過（たいふういっか）", r: "台風が雲を連れ去り、通り過ぎたあとに青空が広がる様子を「台風一過」と言います。", options: ["台風一過（たいふういっか）", "台風晴れ", "終了天気", "青空一巡"] },
+    { q: "台風が通り過ぎて「台風一過」の晴天になったとき、気を付けるべきことは？", a: "川の増水や地盤のゆるみに注意する", r: "雨がやんでも、川の水はすぐには減りません。増水した川や、がけ崩れには引き続き注意が必要です（71P）。", options: ["すぐに外で遊ぶ", "川の増水や地盤のゆるみに注意する", "もう何も備えなくてよい", "窓を全部開ける"] },
+    { q: "台風は上陸したあと、勢力（強さ）はどうなることが多いですか？", a: "弱まっていく", r: "海からの湿った空気（水蒸気）が供給されなくなるため、上陸後は勢力が衰えます。", options: ["さらに強くなる", "弱まっていく", "変わらない", "倍になる"] },
+
+    // レベル3: 防災とハザードマップ（PDF 71ページより）
+    { q: "気象衛星「ひまわり」は、どのような情報を送ってきますか？", a: "宇宙から見た雲の広がりや動き", r: "64ページにあるように、宇宙から地球を見守り、雲の様子を撮影しています。", options: ["星の明るさ", "宇宙から見た雲の広がりや動き", "魚の群れの場所", "地面の温度だけ"] },
+    { q: "大雨によって、川の水があふれて土地が水に浸かる災害を何といいますか？", a: "洪水（こうずい）", r: "71ページに「川でも洪水が起きたことがある」とある通り、大雨による代表的な災害です。", options: ["高潮", "洪水（こうずい）", "津波", "地すべり"] },
+    { q: "地域の危険な場所や避難場所が示された地図を何といいますか？", a: "ハザードマップ", r: "71ページに紹介されている、自分たちの地域の災害リスクを確認するための資料です。", options: ["ハザードマップ", "世界地図", "ロードマップ", "観光地図"] },
+    { q: "台風が近づく前に、自分たちにできる「日ごろの備え」はどれですか？", a: "避難場所を確かめ、防災グッズを用意する", r: "71ページにあるように、事前に避難場所の確認や準備をしておくことが大切です。", options: ["川の様子を見に行く", "避難場所を確かめ、防災グッズを用意する", "屋根に登って修理する", "何もしない"] },
+    { q: "激しい雨によって、がけや山が崩れる災害を何といいますか？", a: "土砂災害（どしゃさいがい）", r: "大雨が地面に染み込むと、がけ崩れなどの土砂災害が起きやすくなります（71P関連）。", options: ["洪水", "高潮", "土砂災害（どしゃさいがい）", "地震"] },
+
+    // レベル4: 応用とまとめ（PDF全体より）
+    { q: "台風の雲は、春の雲と比べて動きにどのような特徴がありますか？", a: "複雑な動きをしたり、速さが変わったりする", r: "春の雲は規則的ですが、台風は迷走したり、上陸後に速度が変わったりします（65P）。", options: ["常に一定のスピード", "西から東へしか動かない", "複雑な動きをしたり、速さが変わったりする", "夜は動かない"] },
+    { q: "台風による強い風で、海面が異常に高くなる現象を何といいますか？", a: "高潮（たかしお）", r: "71ページのハザードマップでも確認できる、海岸付近で警戒が必要な現象です。", options: ["満潮", "高潮（たかしお）", "津波", "渦潮"] },
+    { q: "台風の予報円が非常に大きいとき、それは何を意味していますか？", a: "どこに進むか、予想の幅が広い", r: "円が大きいほど、進路の予想にバラつきがあり、確実な場所が絞り込めていないことを示します（65P）。", options: ["台風の大きさが巨大", "雨の範囲が広い", "どこに進むか、予想の幅が広い", "風がとても強い"] },
+    { q: "台風が発生する場所は、どのようなところですか？", a: "南の、あたたかい海の上", r: "台風はあたたかい海から立ち上がる水蒸気をエネルギーにして発生します（64P）。", options: ["北の、冷たい海の上", "南の、あたたかい海の上", "高い山の頂上", "大きな砂漠"] },
+    { q: "台風の災害から自分たちの命を守るために最も大切なことは？", a: "最新の情報を確かめ、早めに避難を始める", r: "71ページにあるように、ハザードマップを確認し、早めの行動をとることが重要です。", options: ["家の外で風を測る", "川の様子を見に行く", "最新の情報を確かめ、早めに避難を始める", "雨が止むまで寝て待つ"] }
+];
+
+let currentIdx = 0, score = 0, resultsList = [];
+
+function loadQuestion() {
+    const data = quizData[currentIdx];
+    document.getElementById('q-num').innerText = currentIdx + 1;
+    document.getElementById('progress-bar').style.width = ((currentIdx+1)/20*100) + '%';
+    document.getElementById('question').innerText = data.q;
+    const optionsDiv = document.getElementById('options');
+    optionsDiv.innerHTML = '';
+    document.getElementById('feedback').style.display = 'none';
+    
+    // ランク表示
+    let rankName = "お天気たまご";
+    if(currentIdx >= 5) rankName = "見習い予報士";
+    if(currentIdx >= 10) rankName = "お天気パトロール隊";
+    if(currentIdx >= 15) rankName = "台風博士";
+    document.getElementById('rank-badge').innerText = "称号：" + rankName;
+
+    data.options.sort(() => Math.random() - 0.5).forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'opt-btn';
+        btn.innerText = opt;
+        btn.onclick = () => checkAnswer(opt);
+        optionsDiv.appendChild(btn);
+    });
+}
+
+function checkAnswer(selected) {
+    const data = quizData[currentIdx];
+    const isCorrect = selected === data.a;
+    const f = document.getElementById('feedback');
+    resultsList.push({n: currentIdx+1, res: isCorrect, correct: data.a});
+
+    if(isCorrect) {
+        score++;
+        document.getElementById('feedback-title').innerText = "⭕ 正解！";
+        f.className = 'correct-style';
+    } else {
+        document.getElementById('feedback-title').innerText = "❌ おしい！";
+        f.className = 'incorrect-style';
+    }
+    document.getElementById('feedback-desc').innerHTML = `<p>正解：<b>${data.a}</b></p><p>${data.r}</p>`;
+    document.querySelectorAll('.opt-btn').forEach(b => b.disabled = true);
+    f.style.display = 'block';
+}
+
+function goNext() {
+    currentIdx++;
+    if(currentIdx < quizData.length) loadQuestion();
+    else showResult();
+}
+
+function showResult() {
+    document.getElementById('quiz-screen').style.display = 'none';
+    document.getElementById('result-screen').style.display = 'block';
+    document.getElementById('final-score').innerText = `20問中 ${score}問 正解でした！`;
+    
+    let rank = "";
+    if(score === 20) rank = "👑 【伝説】ウェザー・ゴッド（天候神） 👑";
+    else if(score >= 15) rank = "🥇 【超すごい】気象予報マスター 🥇";
+    else if(score >= 10) rank = "🥈 【合格】お天気隊長 🥈";
+    else if(score >= 5) rank = "🥉 【あと少し】お天気見習い 🥉";
+    else rank = "🌱 【修行中】お天気たまご 🌱";
+    
+    document.getElementById('rank-display').innerText = rank;
+    const body = document.getElementById('summary-body');
+    resultsList.forEach(r => {
+        body.innerHTML += `<tr><td>${r.n}</td><td>${r.res?'○':'×'}</td><td>${r.correct}</td></tr>`;
+    });
+}
+
+loadQuestion();
+</script>
+</body>
+</html>

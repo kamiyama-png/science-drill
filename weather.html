@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>理科ドリル：天気の変化のきまり</title>
+    <style>
+        body { font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; background-color: #fdfae6; color: #333; padding: 20px; }
+        .container { max-width: 750px; margin: 0 auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 2px solid #f1c40f; }
+        h1 { text-align: center; color: #d4ac0d; border-bottom: 4px solid #f1c40f; padding-bottom: 10px; }
+        .status-info { display: flex; justify-content: space-between; font-weight: bold; color: #7f8c8d; margin-bottom: 15px; }
+        .progress-container { background: #f0f0f0; border-radius: 10px; height: 12px; margin-bottom: 25px; }
+        #progress-bar { background: #f1c40f; height: 100%; width: 0%; border-radius: 10px; transition: 0.4s; }
+        .q-text { font-size: 1.25em; font-weight: bold; margin-bottom: 20px; color: #7d6608; line-height: 1.6; }
+        .options { display: grid; gap: 12px; }
+        .opt-btn { padding: 15px; border: 2px solid #f9e79f; background: #fff; border-radius: 12px; cursor: pointer; font-size: 1.05em; transition: 0.2s; text-align: left; }
+        .opt-btn:hover:not(:disabled) { background: #fcf3cf; border-color: #f1c40f; }
+        #feedback { display: none; margin-top: 25px; padding: 20px; border-radius: 15px; border-left: 8px solid; }
+        .correct-style { background: #e8f5e9; border-color: #4caf50; color: #1b5e20; }
+        .incorrect-style { background: #ffebee; border-color: #f44336; color: #b71c1c; }
+        .next-btn { display: block; width: 100%; padding: 15px; margin-top: 20px; background: #f1c40f; color: white; border: none; border-radius: 10px; font-size: 1.1em; font-weight: bold; cursor: pointer; }
+
+        #result-screen { display: none; text-align: center; }
+        .rank-banner { font-size: 2.2em; font-weight: bold; margin: 30px 0; color: #b7950b; }
+        .summary-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9em; }
+        .summary-table th, .summary-table td { border: 1px solid #ddd; padding: 10px; }
+        .summary-table th { background: #f1c40f; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="quiz-screen">
+        <h1>☀️ 天気の変化・完全マスター ☁️</h1>
+        <div class="status-info">
+            <span>問題 <span id="q-num">1</span> / 20</span>
+            <span id="rank-badge">称号：観測員見習い</span>
+        </div>
+        <div class="progress-container"><div id="progress-bar"></div></div>
+        
+        <div id="question" class="q-text"></div>
+        <div id="options" class="options"></div>
+
+        <div id="feedback">
+            <div id="feedback-title" style="font-size: 1.3em; font-weight: bold; margin-bottom: 10px;"></div>
+            <div id="feedback-desc"></div>
+            <button class="next-btn" onclick="goNext()">次の問題へ ▶</button>
+        </div>
+    </div>
+
+    <div id="result-screen">
+        <h1>🎊 調査ミッション完了 🎊</h1>
+        <div id="final-score" style="font-size: 1.4em;"></div>
+        <div id="rank-display" class="rank-banner"></div>
+        <h3>📊 観測レポート</h3>
+        <table class="summary-table">
+            <thead>
+                <tr><th>問</th><th>判定</th><th>正しい答え</th></tr>
+            </thead>
+            <tbody id="summary-body"></tbody>
+        </table>
+        <button class="next-btn" onclick="location.reload()">もう一度観測する</button>
+    </div>
+</div>
+
+<script>
+const quizData = [
+    { q: "空全体の広さを「10」としたとき、雲の量が「0〜8」のときの天気は何？", a: "晴れ", r: "教科書10ページにあります。雲の量が0〜8なら「晴れ」、9〜10なら「くもり」と決められています。", options: ["晴れ", "くもり", "雨", "雪"] },
+    { q: "空全体の広さを「10」としたとき、雲の量が「9〜10」のときの天気は何？", a: "くもり", r: "空のほとんどが雲でおおわれている状態（9割以上）を「くもり」と言います（10P）。", options: ["晴れ", "くもり", "快晴", "霧"] },
+    { q: "日本付近の雲は、一般的にどの方角からどの方角へ動きますか？", a: "西から東", r: "気象衛星の画像などを見ると、雲のまとまりは西から東へ移動していくことがわかります（12P）。", options: ["東から西", "西から東", "南から北", "北から南"] },
+    { q: "雲の動きに合わせて、天気はどのようには変化していくことが多いですか？", a: "西から東へ順に変化する", r: "雲が西から東へ動くため、天気も西の方から順に変わっていくという「きまり」があります（13P）。", options: ["東から西へ順に変化する", "西から東へ順に変化する", "北から南へ順に変化する", "どこも同時に変化する"] },
+    { q: "雲が西から東へ動くとき、その速さはどうなっていますか？", a: "日によって変わる", r: "雲は常に同じ速さではなく、日によって速く動いたりゆっくり動いたりします（11P）。", options: ["毎日同じ速さ", "日によって変わる", "夜だけ速くなる", "止まっている"] },
+    
+    { q: "全国各地の雨量、風向・風速、気温などを自動で計測するシステムのなまえは？", a: "アメダス", r: "「地域気象観測システム」のことで、全国約1300か所にあります（13P）。", options: ["ひまわり", "アメダス", "てるてる坊主", "気象台"] },
+    { q: "気象衛星「ひまわり」が撮影している写真はどのようなものですか？", a: "宇宙から見た地球の雲のようす", r: "高いところから広い範囲の雲の様子を撮影し、動きを教えてくれます（13P）。", options: ["地上の花のようす", "宇宙から見た地球の雲のようす", "海の中のようす", "地下の岩石のようす"] },
+    { q: "空のようすを観察して、雲が西の空に増えてきたら、このあとの天気はどうなると予想できる？", a: "天気が下り坂（くもりや雨）になる", r: "天気は西から東へ変わるため、西に雲が出てきたら、それが近づいてくるサインです（12P）。", options: ["もっと晴れてくる", "天気が下り坂（くもりや雨）になる", "風が止まる", "虹が出る"] },
+    { q: "午前中に西の空に青空が見えてきたら、午後の天気はどうなりそう？", a: "天気が回復して晴れてくる", r: "西から天気が変わるので、西が晴れてくれば東にある自分の場所も晴れてくる可能性が高いです。", options: ["大雨になる", "天気が回復して晴れてくる", "雪が降る", "ずっと変わらない"] },
+    { q: "昔から伝わる、天気を予想する言い伝えのことを何といいますか？", a: "観天望気（かんてんぼうき）", r: "「夕やけは晴れ」などのように、自然の様子から天気を判断することです。", options: ["観天望気（かんてんぼうき）", "天気予報", "空読み", "風向き占い"] },
+
+    // 11問目 差し替え：観察のポイント
+    { q: "同じ時刻に空を観察していても、場所によって天気が違うことはありますか？", a: "はい、あります", r: "12ページの資料でもわかるように、同じ時刻でも福岡は雨、札幌は晴れのように場所によって天気は異なります。", options: ["はい、あります", "いいえ、日本全国同じ", "昼間だけ同じになる", "県内なら必ず同じ"] },
+    { q: "天気を予想するために必要な「気象情報」として正しい組み合わせは？", a: "雲画像、アメダスのデータ、過去の天気", r: "複数の情報を組み合わせて、どのように変化しているかを見ることが大切です（13P）。", options: ["テレビの占い、気温", "雲画像、アメダスのデータ、過去の天気", "風の音、花の咲き方", "自分の直感だけ"] },
+    { q: "雲の種類によって、雨の降り方は変わりますか？", a: "はい、変わります", r: "厚い黒い雲は激しい雨、うすい雲はしとしとした雨など、雲によって降り方が違います。", options: ["はい、変わります", "いいえ、どれも同じ", "雨は雲とは関係ない", "夜だけ変わる"] },
+    { q: "「快晴（かいせい）」とは、雲の量がどのくらいのときを指しますか？", a: "0〜1", r: "晴れの中でも、特に雲がほとんどない状態（1割以下）を快晴と言います。", options: ["0〜1", "5", "8", "10"] },
+    { q: "西の空に「夕やけ」が見えると、翌日の天気はどうなることが多い？", a: "晴れる", r: "西の方に雲がない（太陽が見えている）証拠なので、翌日はその晴れがやってきます。", options: ["雨になる", "晴れる", "台風になる", "霧が出る"] },
+
+    // 16問目 差し替え：雨の計測
+    { q: "アメダスが計測しているもののうち、雨に関係するデータは何ですか？", a: "雨量（うりょう）", r: "13ページに「アメダスは、全国各地の雨量や…」とある通り、降った雨の量を自動で測っています。", options: ["雨量（うりょう）", "雨の味", "雨粒の大きさ", "雲の重さ"] },
+    { q: "4月の日本付近の雲の動きと、台風の時の雲の動き、どちらが速い？", a: "日や条件によって異なる", r: "一般的には台風の方が速いこともありますが、上空の風の強さなどで変わります。", options: ["4月の雲", "台風の雲", "いつも同じ", "日や条件によって異なる"] },
+    { q: "天気を予想する際、数日間の変化を続けて調べることが大切なのはなぜ？", a: "雲の動く方向や速さのきまりを見つけるため", r: "1回の観測よりも、流れを見ることで「次に何が来るか」がわかります（13P）。", options: ["暇つぶしのため", "雲の動く方向や速さのきまりを見つけるため", "気温を当てるため", "色の変化を見るため"] },
+    { q: "アメダスのデータで、風向きが急に変わったときに予想できることは？", a: "天気が大きく変わる前ぶれ", r: "風向きの変化は、空気の入れ替わり（前線の通過など）を示していることが多いです。", options: ["何も起きない", "天気が大きく変わる前ぶれ", "地震が起きる", "太陽が消える"] },
+    { q: "空を観察するとき、雲の量以外に見るべき大切なポイントは？", a: "雲の形、色、動く向き", r: "雲がどのような様子で、どちらへ動いているかを知ることが予報の第一歩です（8P）。", options: ["鳥の数", "雲の形、色、動く向き", "飛行機雲の長さ", "太陽のまぶしさ"] }
+];
+
+let cur = 0, score = 0, results = [];
+
+function loadQ() {
+    const data = quizData[cur];
+    document.getElementById('q-num').innerText = cur + 1;
+    document.getElementById('progress-bar').style.width = ((cur+1)/20*100) + '%';
+    document.getElementById('question').innerText = data.q;
+    const optDiv = document.getElementById('options');
+    optDiv.innerHTML = '';
+    document.getElementById('feedback').style.display = 'none';
+    
+    let rank = "観測員見習い";
+    if(cur >= 5) rank = "空読み初段";
+    if(cur >= 10) rank = "アメダス技師";
+    if(cur >= 15) rank = "気象予報士のたまご";
+    document.getElementById('rank-badge').innerText = "称号：" + rank;
+
+    data.options.sort(()=>Math.random()-0.5).forEach(o => {
+        const b = document.createElement('button');
+        b.className = 'opt-btn';
+        b.innerText = o;
+        b.onclick = () => check(o);
+        optDiv.appendChild(b);
+    });
+}
+
+function check(sel) {
+    const d = quizData[cur];
+    const isC = sel === d.a;
+    const f = document.getElementById('feedback');
+    results.push({res: isC, a: d.a});
+
+    if(isC) {
+        score++;
+        document.getElementById('feedback-title').innerText = "⭕ 正解です！";
+        f.className = 'correct-style';
+    } else {
+        document.getElementById('feedback-title').innerText = "❌ おしい！";
+        f.className = 'incorrect-style';
+    }
+    document.getElementById('feedback-desc').innerHTML = `<p>正しい答え：<b>${d.a}</b></p><p>${d.r}</p>`;
+    document.querySelectorAll('.opt-btn').forEach(b => b.disabled = true);
+    f.style.display = 'block';
+}
+
+function goNext() {
+    cur++;
+    if(cur < 20) loadQ();
+    else showRes();
+}
+
+function showRes() {
+    document.getElementById('quiz-screen').style.display = 'none';
+    document.getElementById('result-screen').style.display = 'block';
+    document.getElementById('final-score').innerText = `20問中 ${score}問 正解！`;
+    
+    let rank = "";
+    if(score === 20) rank = "👑 【伝説】スカイ・マスター 👑";
+    else if(score >= 15) rank = "🥇 【超すごい】気象予報の達人 🥇";
+    else if(score >= 10) rank = "🥈 【合格】お天気隊長 🥈";
+    else if(score >= 5) rank = "🥉 【あと一歩】空の観察員 🥉";
+    else rank = "🌱 【修行中】お天気たまご 🌱";
+    
+    document.getElementById('rank-display').innerText = rank;
+    const sB = document.getElementById('summary-body');
+    results.forEach((r, i) => {
+        sB.innerHTML += `<tr><td>${i+1}</td><td>${r.res?'○':'×'}</td><td>${r.a}</td></tr>`;
+    });
+}
+
+loadQ();
+</script>
+</body>
+</html>
